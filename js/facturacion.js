@@ -170,9 +170,13 @@ async function renderSalesHistory() {
 
   if (searchTerm) {
     sales = sales.filter(sale => {
+      const productNames = (sale.items || [])
+        .map(item => (item.name || '').toLowerCase())
+        .join(' ');
+
       return (sale.number || '').toLowerCase().includes(searchTerm) ||
              (sale.customerName || '').toLowerCase().includes(searchTerm) ||
-             (sale.sellerName || '').toLowerCase().includes(searchTerm);
+             productNames.includes(searchTerm);
     });
   }
 
@@ -197,6 +201,14 @@ async function renderSalesHistory() {
   tbody.innerHTML = sales.map(sale => {
     const typeBadgeClass = sale.saleType === 'Credito' ? 'badge-warning' : 'badge-success';
     const statusBadgeClass = sale.paymentStatus === 'Pendiente' ? 'badge-danger' : 'badge-success';
+    const saleItems = sale.items || [];
+    const productsPreview = saleItems.slice(0, 2).map(item => {
+      const qty = Number(item.quantity || 0);
+      return `${qty}x ${escapeHtml(item.name || 'Producto')}`;
+    }).join('<br>');
+    const extraItems = saleItems.length > 2
+      ? `<div class="sale-meta">+${saleItems.length - 2} producto(s) más</div>`
+      : '';
 
     return `
       <tr>
@@ -206,7 +218,10 @@ async function renderSalesHistory() {
         </td>
         <td>${sale.date ? formatDateTime(sale.date) : '—'}</td>
         <td>${escapeHtml(sale.customerName || 'Cliente general')}</td>
-        <td>${escapeHtml(sale.sellerName || '—')}</td>
+        <td>
+          <div class="sale-products">${productsPreview || '—'}</div>
+          ${extraItems}
+        </td>
         <td><span class="badge ${typeBadgeClass}">${sale.saleType === 'Credito' ? 'A crédito' : 'Al contado'}</span></td>
         <td>${escapeHtml(sale.paymentMethod || 'Efectivo')}</td>
         <td><span class="badge ${statusBadgeClass}">${escapeHtml(sale.paymentStatus)}</span></td>
