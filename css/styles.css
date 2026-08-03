@@ -191,18 +191,23 @@ h1, h2, h3, h4 {
 }
 
 .login-logo .logo-icon {
-  width: 64px;
-  height: 64px;
-  background: linear-gradient(135deg, var(--primary), #7c3aed);
+  width: 76px;
+  height: 76px;
+  background: var(--white);
   border-radius: var(--radius);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--white);
-  font-size: 1.6rem;
-  font-weight: 800;
-  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+  box-shadow: var(--shadow);
   margin-bottom: 16px;
+  overflow: hidden;
+  padding: 8px;
+}
+
+.login-logo .logo-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .login-card h1 {
@@ -437,15 +442,20 @@ h1, h2, h3, h4 {
 .sidebar-brand .logo-badge {
   width: 42px;
   height: 42px;
-  background: linear-gradient(135deg, var(--primary), #7c3aed);
+  background: var(--white);
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--white);
-  font-weight: 800;
-  font-size: 1rem;
+  padding: 4px;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.sidebar-brand .logo-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .sidebar-brand-text {
