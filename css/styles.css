@@ -1319,6 +1319,13 @@ h1, h2, h3, h4 {
   resize: vertical;
 }
 
+#orderReference[readonly] {
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
 /* ---------- Pantalla vacía / sin datos ---------- */
 .empty-state {
   text-align: center;

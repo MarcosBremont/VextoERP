@@ -45,6 +45,19 @@ function setupCheckoutForm() {
   toggleCreditFields();
 }
 
+async function setNextOrderReferencePreview() {
+  const orderInput = document.getElementById('orderReference');
+  if (!orderInput) return;
+
+  try {
+    const nextReference = await DB.getUpcomingOrderReference();
+    orderInput.value = nextReference;
+  } catch (e) {
+    console.error('Error obteniendo referencia de orden:', e);
+    orderInput.value = '01';
+  }
+}
+
 function toggleCreditFields() {
   const saleType = document.getElementById('saleType');
   const paymentMethod = document.getElementById('paymentMethod');
@@ -76,16 +89,16 @@ function toggleCreditFields() {
   }
 }
 
-function resetCheckoutForm() {
+async function resetCheckoutForm() {
   document.getElementById('customerName').value = '';
   document.getElementById('customerPhone').value = '';
-  document.getElementById('orderReference').value = '';
   document.getElementById('saleNotes').value = '';
   document.getElementById('creditDueDate').value = '';
   document.getElementById('initialPayment').value = '0';
   document.getElementById('saleType').value = 'Contado';
   document.getElementById('paymentMethod').value = 'Efectivo';
   toggleCreditFields();
+  await setNextOrderReferencePreview();
 }
 
 function getCheckoutData() {
@@ -121,6 +134,7 @@ function getCheckoutData() {
     saleType,
     paymentMethod,
     orderReference,
+    autoOrderReference: true,
     dueDate: saleType === 'Credito' ? dueDate : null,
     initialPayment: saleType === 'Credito' ? initialPayment : total,
     notes
@@ -133,6 +147,7 @@ async function loadBillingData() {
     allProducts = await DB.getProducts();
     renderStats();
     renderProductsBilling();
+    await setNextOrderReferencePreview();
     await renderSalesHistory();
   } catch (e) {
     console.error('Error cargando datos:', e);
@@ -529,7 +544,7 @@ function renderCart() {
 }
 
 /* ============ COBRO / CONFIRMAR VENTA ============ */
-function openCheckoutModal() {
+async function openCheckoutModal() {
   if (cart.length === 0) return;
 
   const summary = document.getElementById('checkoutSummary');
@@ -548,7 +563,7 @@ function openCheckoutModal() {
     </div>
   `;
 
-  resetCheckoutForm();
+  await resetCheckoutForm();
 
   openModal('checkoutModal');
 }

@@ -10,7 +10,8 @@ const STORAGE_KEYS = {
   PRODUCTS: 'vexto_products',
   SALES: 'vexto_sales',
   SESSION: 'vexto_session',
-  SALE_NUMBER: 'vexto_sale_number'
+  SALE_NUMBER: 'vexto_sale_number',
+  ORDER_REFERENCE: 'vexto_order_reference'
 };
 
 // Colecciones de Firestore
@@ -453,6 +454,44 @@ const DB = {
     return String(next).padStart(4, '0');
   },
 
+  async getUpcomingOrderReference() {
+    if (isFirebaseAvailable()) {
+      try {
+        const doc = await db.collection(COLLECTIONS.COUNTERS).doc('orderReference').get();
+        const current = doc.exists ? Number(doc.data().value || 0) : 0;
+        return String(current + 1).padStart(2, '0');
+      } catch (e) {
+        console.warn('Firebase bloqueado, usando localStorage:', e.message);
+      }
+    }
+
+    const current = Number(readData(STORAGE_KEYS.ORDER_REFERENCE, 1) || 1);
+    return String(current).padStart(2, '0');
+  },
+
+  async getNextOrderReference() {
+    if (isFirebaseAvailable()) {
+      try {
+        const counterRef = db.collection(COLLECTIONS.COUNTERS).doc('orderReference');
+        const result = await db.runTransaction(async (transaction) => {
+          const doc = await transaction.get(counterRef);
+          const current = doc.exists ? Number(doc.data().value || 0) : 0;
+          const next = current + 1;
+          transaction.set(counterRef, { value: next });
+          return next;
+        });
+        return String(result).padStart(2, '0');
+      } catch (e) {
+        console.warn('Firebase bloqueado, usando localStorage:', e.message);
+      }
+    }
+
+    const current = Number(readData(STORAGE_KEYS.ORDER_REFERENCE, 1) || 1);
+    const next = current;
+    saveData(STORAGE_KEYS.ORDER_REFERENCE, current + 1);
+    return String(next).padStart(2, '0');
+  },
+
   // Registrar una venta (con descuento de stock)
   async registerSale(cartItems, options = {}) {
     if (!cartItems || cartItems.length === 0) {
@@ -491,6 +530,11 @@ const DB = {
       : total;
     const pendingBalance = Math.max(total - paidAmount, 0);
 
+    const autoOrderReference = options.autoOrderReference !== false;
+    const resolvedOrderReference = autoOrderReference
+      ? await this.getNextOrderReference()
+      : (options.orderReference || '').trim();
+
     const saleData = {
       id: generateId(),
       number: await this.getNextSaleNumber(),
@@ -506,7 +550,7 @@ const DB = {
       saleType,
       customerName: (options.customerName || '').trim() || 'Cliente general',
       customerPhone: (options.customerPhone || '').trim(),
-      orderReference: (options.orderReference || '').trim(),
+      orderReference: resolvedOrderReference,
       dueDate: saleType === 'Credito' ? (options.dueDate || null) : null,
       notes: (options.notes || '').trim(),
       paidAmount,
