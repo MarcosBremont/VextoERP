@@ -113,7 +113,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const username = document.getElementById('regUsername').value.trim();
       const password = document.getElementById('regPassword').value;
       const confirmPassword = document.getElementById('regConfirmPassword').value;
-      const role = document.getElementById('regRole').value;
 
       // Validaciones
       if (!name) {
@@ -138,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
       registerBtnText.textContent = 'Creando cuenta...';
 
       try {
-        const result = await DB.registerUser({ name, username, password, role });
+        const result = await DB.registerUser({ name, username, password, role: 'Vendedor' });
 
         if (result.success) {
           // Auto-login con el nuevo usuario
