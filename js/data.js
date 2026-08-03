@@ -130,7 +130,7 @@ const DB = {
     }
 
     // Fallback: localStorage
-    const users = this.getUsers();
+    const users = await this.getUsers();
     if (users.length === 0) {
       users.push({
         id: generateId(),
@@ -164,7 +164,7 @@ const DB = {
     }
 
     // Fallback: localStorage
-    const users = this.getUsers();
+    const users = await this.getUsers();
     return users.find(u =>
       u.username.toLowerCase() === username.toLowerCase() &&
       u.password === password
@@ -210,7 +210,7 @@ const DB = {
     }
 
     // Fallback: localStorage
-    const users = this.getUsers();
+    const users = await this.getUsers();
     if (users.find(u => u.username.toLowerCase() === username)) {
       return { success: false, error: 'El nombre de usuario ya está registrado' };
     }
@@ -296,7 +296,7 @@ const DB = {
     }
 
     // Fallback: localStorage
-    const products = this.getProducts();
+    const products = await this.getProducts();
     products.push(newProduct);
     saveData(STORAGE_KEYS.PRODUCTS, products);
     return newProduct;
@@ -324,7 +324,7 @@ const DB = {
     }
 
     // Fallback: localStorage
-    const products = this.getProducts();
+    const products = await this.getProducts();
     const index = products.findIndex(p => p.id === id);
     if (index === -1) return null;
     products[index] = { ...products[index], ...updatedData };
@@ -343,7 +343,7 @@ const DB = {
     }
 
     // Fallback: localStorage
-    const products = this.getProducts();
+    const products = await this.getProducts();
     const filtered = products.filter(p => p.id !== id);
     saveData(STORAGE_KEYS.PRODUCTS, filtered);
     return true;
@@ -377,7 +377,7 @@ const DB = {
     }
 
     // Fallback: localStorage
-    const products = this.getProducts();
+    const products = await this.getProducts();
     const product = products.find(p => p.id === productId);
     if (!product) return { success: false, error: 'Producto no encontrado' };
     if (product.stock < quantity) return { success: false, error: 'Stock insuficiente' };
@@ -513,7 +513,7 @@ const DB = {
     }
 
     // Fallback: localStorage
-    const sales = this.getSales();
+    const sales = await this.getSales();
     sales.push(saleData);
     saveData(STORAGE_KEYS.SALES, sales);
     return { success: true, sale: saleData };
@@ -661,6 +661,26 @@ function setupMobileMenu() {
       document.querySelector('.sidebar').classList.remove('open');
     });
   });
+}
+
+/* ---------- SEMBRAR DATOS DE EJEMPLO ---------- */
+// Añadir productos de ejemplo si el inventario está vacío (primera visita)
+async function seedSampleData() {
+  const products = await DB.getProducts();
+  if (products.length > 0) return;
+
+  const sampleProducts = [
+    { name: 'Crema Hidratante', description: 'Hidratación profunda 24h', category: 'Cuidado Personal', price: 12.50, cost: 6.00, stock: 50, minStock: 10 },
+    { name: 'Shampoo Volumen', description: 'Para cabello fino', category: 'Cabello', price: 8.90, cost: 4.00, stock: 30, minStock: 15 },
+    { name: 'Jabón de Manos', description: 'Con aloe vera', category: 'Higiene', price: 3.50, cost: 1.50, stock: 100, minStock: 20 },
+    { name: 'Loción Tanante', description: 'Protección solar SPF 30', category: 'Cuidado Personal', price: 15.00, cost: 8.00, stock: 5, minStock: 10 },
+    { name: 'Perfume Aventura', description: 'Fragancia masculina', category: 'Fragancias', price: 25.00, cost: 12.00, stock: 0, minStock: 5 }
+  ];
+
+  for (const product of sampleProducts) {
+    await DB.addProduct(product);
+  }
+  console.log('✅ Datos de ejemplo cargados en el inventario');
 }
 
 /* ---------- INIT ---------- */

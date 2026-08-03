@@ -2,12 +2,12 @@
    VextoERP - Inventario (CRUD de Productos)
    ============================================ */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // Proteger ruta: si no hay sesión, redirigir al login
   if (!requireAuth()) return;
 
   // Inicializar datos de ejemplo en la primera visita
-  seedSampleData();
+  await seedSampleData();
 
   // UI común
   renderSidebarUser();
@@ -15,8 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setupMobileMenu();
 
   // Cargar datos
-  renderStats();
-  renderProductsTable();
+  await renderStats();
+  await renderProductsTable();
 
   // Búsqueda en tiempo real
   const searchInput = document.getElementById('searchInput');
@@ -24,11 +24,11 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ============ STATS CARDS ============ */
-function renderStats() {
-  const products = DB.getProducts();
-  const lowStock = DB.getLowStockProducts();
-  const totalUnits = DB.getTotalUnits();
-  const inventoryValue = DB.getInventoryValue();
+async function renderStats() {
+  const products = await DB.getProducts();
+  const lowStock = await DB.getLowStockProducts();
+  const totalUnits = await DB.getTotalUnits();
+  const inventoryValue = await DB.getInventoryValue();
 
   const stats = [
     {
@@ -67,12 +67,12 @@ function renderStats() {
 }
 
 /* ============ TABLA DE PRODUCTOS ============ */
-function renderProductsTable() {
+async function renderProductsTable() {
   const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
   const tbody = document.getElementById('productsTableBody');
   const emptyState = document.getElementById('emptyState');
 
-  let products = DB.getProducts();
+  let products = await DB.getProducts();
 
   // Filtrar por búsqueda
   if (searchTerm) {
@@ -135,7 +135,7 @@ function renderProductsTable() {
 }
 
 /* ============ NUEVO / EDITAR PRODUCTO ============ */
-function openProductModal(productId = null) {
+async function openProductModal(productId = null) {
   const modal = document.getElementById('productModal');
   const form = document.getElementById('productForm');
   const title = document.getElementById('modalTitle');
@@ -144,7 +144,7 @@ function openProductModal(productId = null) {
   document.getElementById('productId').value = '';
 
   if (productId) {
-    const product = DB.getProducts().find(p => p.id === productId);
+    const product = (await DB.getProducts()).find(p => p.id === productId);
     if (!product) return;
 
     title.textContent = '✏️ Editar Producto';
@@ -169,7 +169,7 @@ function editProduct(productId) {
 }
 
 // Guardar (crear o editar)
-document.getElementById('productForm').addEventListener('submit', (e) => {
+document.getElementById('productForm').addEventListener('submit', async (e) => {
   e.preventDefault();
 
   const productId = document.getElementById('productId').value;
@@ -202,40 +202,40 @@ document.getElementById('productForm').addEventListener('submit', (e) => {
   const productData = { name, description, category, price, cost, stock, minStock: minStock || 0 };
 
   if (productId) {
-    DB.updateProduct(productId, productData);
+    await DB.updateProduct(productId, productData);
     showToast('✅ Producto actualizado correctamente');
   } else {
-    DB.addProduct(productData);
+    await DB.addProduct(productData);
     showToast('✅ Producto agregado al inventario');
   }
 
   closeModal('productModal');
-  renderStats();
-  renderProductsTable();
+  await renderStats();
+  await renderProductsTable();
 });
 
 /* ============ ELIMINAR PRODUCTO ============ */
 let deleteProductId = null;
 
-function openDeleteModal(productId) {
+async function openDeleteModal(productId) {
   deleteProductId = productId;
-  const product = DB.getProducts().find(p => p.id === productId);
+  const product = (await DB.getProducts()).find(p => p.id === productId);
   if (product) {
     document.getElementById('deleteProductName').textContent = product.name;
   }
   openModal('deleteModal');
 }
 
-function confirmDeleteProduct() {
+async function confirmDeleteProduct() {
   if (!deleteProductId) return;
 
-  DB.deleteProduct(deleteProductId);
+  await DB.deleteProduct(deleteProductId);
   deleteProductId = null;
   closeModal('deleteModal');
   showToast('🗑️ Producto eliminado');
 
-  renderStats();
-  renderProductsTable();
+  await renderStats();
+  await renderProductsTable();
 }
 
 /* ============ UTILIDADES ============ */
