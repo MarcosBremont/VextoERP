@@ -54,6 +54,7 @@ body {
   color: var(--gray-800);
   line-height: 1.5;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 a {
@@ -1416,7 +1417,46 @@ h1, h2, h3, h4 {
   }
 
   .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .card-body {
+    padding: 16px;
+  }
+
+  .factura-layout {
+    gap: 16px;
+  }
+
+  .product-list-billing {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    max-height: none;
+  }
+
+  .billing-product-card {
+    padding: 12px;
+  }
+
+  .cart-body {
+    max-height: none;
+    min-height: 180px;
+  }
+
+  .toolbar {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .toolbar .search-input {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .sales-filter-select {
+    width: calc(50% - 4px);
+    min-width: 0;
   }
 
   .login-card {
@@ -1425,16 +1465,11 @@ h1, h2, h3, h4 {
 }
 
 @media (max-width: 480px) {
-  .stats-grid {
+  .product-list-billing {
     grid-template-columns: 1fr;
   }
 
-  .toolbar {
-    width: 100%;
-  }
-
-  .toolbar .search-input {
-    max-width: 100%;
+  .sales-filter-select {
     width: 100%;
   }
 }
