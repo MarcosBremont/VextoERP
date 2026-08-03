@@ -191,8 +191,8 @@ h1, h2, h3, h4 {
 }
 
 .login-logo .logo-icon {
-  width: 76px;
-  height: 76px;
+  width: 64px;
+  height: 64px;
   background: var(--white);
   border-radius: var(--radius);
   display: inline-flex;
@@ -440,8 +440,8 @@ h1, h2, h3, h4 {
 }
 
 .sidebar-brand .logo-badge {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   background: var(--white);
   border-radius: 10px;
   display: flex;
