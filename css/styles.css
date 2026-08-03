@@ -46,6 +46,8 @@
 
 html {
   font-size: 16px;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -54,6 +56,7 @@ body {
   color: var(--gray-800);
   line-height: 1.5;
   min-height: 100vh;
+  width: 100%;
   overflow-x: hidden;
 }
 
@@ -404,6 +407,9 @@ h1, h2, h3, h4 {
 .app-layout {
   display: flex;
   min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .sidebar {
@@ -575,6 +581,10 @@ h1, h2, h3, h4 {
   flex: 1;
   margin-left: 260px;
   min-height: 100vh;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .topbar {
@@ -622,6 +632,8 @@ h1, h2, h3, h4 {
   padding: 32px;
   max-width: 1400px;
   margin: 0 auto;
+  width: 100%;
+  min-width: 0;
 }
 
 .page-header {
@@ -650,6 +662,7 @@ h1, h2, h3, h4 {
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--gray-200);
   overflow: hidden;
+  min-width: 0;
 }
 
 .card-header {
@@ -725,7 +738,10 @@ h1, h2, h3, h4 {
 
 /* ---------- Tablas ---------- */
 .table-responsive {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .data-table {
@@ -997,6 +1013,7 @@ h1, h2, h3, h4 {
   grid-template-columns: 1fr 420px;
   gap: 24px;
   align-items: start;
+  min-width: 0;
 }
 
 .product-search-box {
@@ -1009,6 +1026,7 @@ h1, h2, h3, h4 {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 14px;
+  min-width: 0;
 }
 
 .billing-product-card {
@@ -1401,7 +1419,7 @@ h1, h2, h3, h4 {
   }
 
   .content-area {
-    padding: 20px 16px;
+    padding: 16px 12px;
   }
 
   .topbar {
@@ -1425,12 +1443,16 @@ h1, h2, h3, h4 {
     padding: 16px;
   }
 
+  .card-header {
+    padding: 14px 16px;
+  }
+
   .factura-layout {
     gap: 16px;
   }
 
   .product-list-billing {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     gap: 10px;
     max-height: none;
   }
@@ -1457,6 +1479,10 @@ h1, h2, h3, h4 {
   .sales-filter-select {
     width: calc(50% - 4px);
     min-width: 0;
+  }
+
+  .topbar h2 {
+    font-size: 1.05rem;
   }
 
   .login-card {
