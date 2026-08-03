@@ -1302,6 +1302,18 @@ h1, h2, h3, h4 {
   padding-top: 8px;
 }
 
+.checkout-extra-fields {
+  text-align: left;
+  margin-top: 10px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--gray-200);
+}
+
+.checkout-extra-fields textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
 /* ---------- Pantalla vacía / sin datos ---------- */
 .empty-state {
   text-align: center;
@@ -1336,6 +1348,22 @@ h1, h2, h3, h4 {
 
 .toolbar .search-input {
   max-width: 280px;
+}
+
+.sales-filter-select {
+  width: auto;
+  min-width: 145px;
+}
+
+.sale-ref {
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.sale-meta {
+  font-size: 0.76rem;
+  color: var(--gray-500);
+  margin-top: 2px;
 }
 
 /* ---------- Responsive ---------- */

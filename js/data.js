@@ -484,6 +484,13 @@ const DB = {
     const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const session = this.getSession();
 
+    const saleType = options.saleType === 'Credito' ? 'Credito' : 'Contado';
+    const requestedInitialPayment = Number(options.initialPayment || 0);
+    const paidAmount = saleType === 'Credito'
+      ? Math.min(Math.max(requestedInitialPayment, 0), total)
+      : total;
+    const pendingBalance = Math.max(total - paidAmount, 0);
+
     const saleData = {
       id: generateId(),
       number: await this.getNextSaleNumber(),
@@ -495,7 +502,16 @@ const DB = {
         subtotal: item.price * item.quantity
       })),
       total,
-      paymentMethod: options.paymentMethod || 'Efectivo',
+      paymentMethod: saleType === 'Credito' ? 'Crédito' : (options.paymentMethod || 'Efectivo'),
+      saleType,
+      customerName: (options.customerName || '').trim() || 'Cliente general',
+      customerPhone: (options.customerPhone || '').trim(),
+      orderReference: (options.orderReference || '').trim(),
+      dueDate: saleType === 'Credito' ? (options.dueDate || null) : null,
+      notes: (options.notes || '').trim(),
+      paidAmount,
+      pendingBalance,
+      paymentStatus: pendingBalance > 0 ? 'Pendiente' : 'Pagada',
       date: new Date().toISOString(),
       sellerId: session ? session.id : null,
       sellerName: session ? session.name : '—'

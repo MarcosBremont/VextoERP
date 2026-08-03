@@ -19,10 +19,112 @@ document.addEventListener('DOMContentLoaded', () => {
   // Cargar datos
   loadBillingData();
 
+  // Configurar campos del modal de cobro
+  setupCheckoutForm();
+
   // Búsqueda en tiempo real
   const searchInput = document.getElementById('searchProductInput');
   searchInput.addEventListener('input', renderProductsBilling);
+
+  // Filtros del historial de ventas
+  const salesSearchInput = document.getElementById('salesSearchInput');
+  const salesTypeFilter = document.getElementById('salesTypeFilter');
+  const salesStatusFilter = document.getElementById('salesStatusFilter');
+
+  salesSearchInput.addEventListener('input', renderSalesHistory);
+  salesTypeFilter.addEventListener('change', renderSalesHistory);
+  salesStatusFilter.addEventListener('change', renderSalesHistory);
 });
+
+function setupCheckoutForm() {
+  const saleType = document.getElementById('saleType');
+  if (!saleType) return;
+
+  saleType.addEventListener('change', toggleCreditFields);
+  toggleCreditFields();
+}
+
+function toggleCreditFields() {
+  const saleType = document.getElementById('saleType');
+  const paymentMethod = document.getElementById('paymentMethod');
+  const dueDateGroup = document.getElementById('creditDueDateGroup');
+  const dueDateInput = document.getElementById('creditDueDate');
+  const initialPaymentGroup = document.getElementById('initialPaymentGroup');
+  const initialPaymentInput = document.getElementById('initialPayment');
+
+  if (!saleType || !paymentMethod || !dueDateGroup || !dueDateInput || !initialPaymentGroup || !initialPaymentInput) {
+    return;
+  }
+
+  const isCredit = saleType.value === 'Credito';
+
+  dueDateGroup.classList.toggle('hidden', !isCredit);
+  initialPaymentGroup.classList.toggle('hidden', !isCredit);
+  dueDateInput.required = isCredit;
+
+  if (isCredit) {
+    paymentMethod.value = 'Crédito';
+    paymentMethod.disabled = true;
+  } else {
+    if (paymentMethod.value === 'Crédito') {
+      paymentMethod.value = 'Efectivo';
+    }
+    paymentMethod.disabled = false;
+    dueDateInput.value = '';
+    initialPaymentInput.value = '0';
+  }
+}
+
+function resetCheckoutForm() {
+  document.getElementById('customerName').value = '';
+  document.getElementById('customerPhone').value = '';
+  document.getElementById('orderReference').value = '';
+  document.getElementById('saleNotes').value = '';
+  document.getElementById('creditDueDate').value = '';
+  document.getElementById('initialPayment').value = '0';
+  document.getElementById('saleType').value = 'Contado';
+  document.getElementById('paymentMethod').value = 'Efectivo';
+  toggleCreditFields();
+}
+
+function getCheckoutData() {
+  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  const customerName = document.getElementById('customerName').value.trim();
+  const customerPhone = document.getElementById('customerPhone').value.trim();
+  const saleType = document.getElementById('saleType').value;
+  const paymentMethod = document.getElementById('paymentMethod').value;
+  const orderReference = document.getElementById('orderReference').value.trim();
+  const dueDate = document.getElementById('creditDueDate').value;
+  const notes = document.getElementById('saleNotes').value.trim();
+  const initialPayment = Number(document.getElementById('initialPayment').value || 0);
+
+  if (saleType === 'Credito') {
+    if (!dueDate) {
+      showToast('Debes indicar una fecha de vencimiento para ventas a crédito', 'warning');
+      return null;
+    }
+    if (initialPayment < 0) {
+      showToast('El abono inicial no puede ser negativo', 'warning');
+      return null;
+    }
+    if (initialPayment > total) {
+      showToast('El abono inicial no puede exceder el total de la venta', 'warning');
+      return null;
+    }
+  }
+
+  return {
+    customerName: customerName || 'Cliente general',
+    customerPhone,
+    saleType,
+    paymentMethod,
+    orderReference,
+    dueDate: saleType === 'Credito' ? dueDate : null,
+    initialPayment: saleType === 'Credito' ? initialPayment : total,
+    notes
+  };
+}
 
 // Cargar productos y stats desde Firebase
 async function loadBillingData() {
@@ -30,10 +132,89 @@ async function loadBillingData() {
     allProducts = await DB.getProducts();
     renderStats();
     renderProductsBilling();
+    await renderSalesHistory();
   } catch (e) {
     console.error('Error cargando datos:', e);
     showToast('Error al cargar datos desde Firebase', 'error');
   }
+}
+
+async function renderSalesHistory() {
+  const tbody = document.getElementById('salesHistoryBody');
+  const tableWrap = document.getElementById('salesHistoryTableWrap');
+  const emptyState = document.getElementById('salesHistoryEmptyState');
+
+  if (!tbody || !tableWrap || !emptyState) return;
+
+  const searchTerm = (document.getElementById('salesSearchInput').value || '').trim().toLowerCase();
+  const typeFilter = document.getElementById('salesTypeFilter').value;
+  const statusFilter = document.getElementById('salesStatusFilter').value;
+
+  let sales = await DB.getSales();
+
+  sales = sales
+    .map(sale => {
+      const normalizedSaleType = sale.saleType || (sale.paymentMethod === 'Crédito' ? 'Credito' : 'Contado');
+      const pendingBalance = Number(sale.pendingBalance || 0);
+      const normalizedStatus = sale.paymentStatus || (pendingBalance > 0 ? 'Pendiente' : 'Pagada');
+
+      return {
+        ...sale,
+        saleType: normalizedSaleType,
+        pendingBalance,
+        paymentStatus: normalizedStatus,
+        customerName: sale.customerName || 'Cliente general'
+      };
+    })
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  if (searchTerm) {
+    sales = sales.filter(sale => {
+      return (sale.number || '').toLowerCase().includes(searchTerm) ||
+             (sale.customerName || '').toLowerCase().includes(searchTerm) ||
+             (sale.sellerName || '').toLowerCase().includes(searchTerm);
+    });
+  }
+
+  if (typeFilter) {
+    sales = sales.filter(sale => sale.saleType === typeFilter);
+  }
+
+  if (statusFilter) {
+    sales = sales.filter(sale => sale.paymentStatus === statusFilter);
+  }
+
+  if (sales.length === 0) {
+    tbody.innerHTML = '';
+    tableWrap.classList.add('hidden');
+    emptyState.classList.remove('hidden');
+    return;
+  }
+
+  tableWrap.classList.remove('hidden');
+  emptyState.classList.add('hidden');
+
+  tbody.innerHTML = sales.map(sale => {
+    const typeBadgeClass = sale.saleType === 'Credito' ? 'badge-warning' : 'badge-success';
+    const statusBadgeClass = sale.paymentStatus === 'Pendiente' ? 'badge-danger' : 'badge-success';
+
+    return `
+      <tr>
+        <td>
+          <div class="sale-ref">#${escapeHtml(sale.number || '—')}</div>
+          ${sale.orderReference ? `<div class="sale-meta">Ref: ${escapeHtml(sale.orderReference)}</div>` : ''}
+        </td>
+        <td>${sale.date ? formatDateTime(sale.date) : '—'}</td>
+        <td>${escapeHtml(sale.customerName || 'Cliente general')}</td>
+        <td>${escapeHtml(sale.sellerName || '—')}</td>
+        <td><span class="badge ${typeBadgeClass}">${sale.saleType === 'Credito' ? 'A crédito' : 'Al contado'}</span></td>
+        <td>${escapeHtml(sale.paymentMethod || 'Efectivo')}</td>
+        <td><span class="badge ${statusBadgeClass}">${escapeHtml(sale.paymentStatus)}</span></td>
+        <td><strong>${formatCurrency(sale.total || 0)}</strong></td>
+        <td>${formatCurrency(sale.pendingBalance || 0)}</td>
+      </tr>
+    `;
+  }).join('');
 }
 
 /* ============ STATS CARDS ============ */
@@ -270,15 +451,16 @@ function openCheckoutModal() {
     </div>
   `;
 
-  // Resetear método de pago
-  document.getElementById('paymentMethod').value = 'Efectivo';
+  resetCheckoutForm();
 
   openModal('checkoutModal');
 }
 
 async function confirmSale() {
-  const paymentMethod = document.getElementById('paymentMethod').value;
-  const result = await DB.registerSale(cart, { paymentMethod });
+  const checkoutData = getCheckoutData();
+  if (!checkoutData) return;
+
+  const result = await DB.registerSale(cart, checkoutData);
 
   if (!result.success) {
     showToast(result.error, 'error');
@@ -306,6 +488,40 @@ async function confirmSale() {
       <span>Método de pago:</span>
       <span>${escapeHtml(sale.paymentMethod)}</span>
     </div>
+    <div class="summary-row">
+      <span>Cliente:</span>
+      <span>${escapeHtml(sale.customerName || 'Cliente general')}</span>
+    </div>
+    <div class="summary-row">
+      <span>Tipo de venta:</span>
+      <span>${sale.saleType === 'Credito' ? 'A crédito' : 'Al contado'}</span>
+    </div>
+    ${sale.orderReference ? `
+      <div class="summary-row">
+        <span>Referencia:</span>
+        <span>${escapeHtml(sale.orderReference)}</span>
+      </div>
+    ` : ''}
+    ${sale.saleType === 'Credito' ? `
+      <div class="summary-row">
+        <span>Vence:</span>
+        <span>${sale.dueDate ? formatDateTime(sale.dueDate + 'T00:00:00') : '—'}</span>
+      </div>
+      <div class="summary-row">
+        <span>Abono:</span>
+        <span>${formatCurrency(sale.paidAmount || 0)}</span>
+      </div>
+      <div class="summary-row">
+        <span>Saldo pendiente:</span>
+        <span>${formatCurrency(sale.pendingBalance || 0)}</span>
+      </div>
+    ` : ''}
+    ${sale.notes ? `
+      <div class="summary-row">
+        <span>Notas:</span>
+        <span>${escapeHtml(sale.notes)}</span>
+      </div>
+    ` : ''}
     <div class="summary-row" style="border-top:1px solid var(--gray-200); margin-top:6px; padding-top:6px;">
       <span>Artículos vendidos:</span>
       <span>${cart.reduce((s, i) => s + i.quantity, 0)}</span>
