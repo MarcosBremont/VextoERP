@@ -6,6 +6,7 @@
 // Estado del carrito
 let cart = [];
 let allProducts = [];
+let activePaymentSaleId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   // Proteger ruta: si no hay sesión, redirigir al login
@@ -202,6 +203,7 @@ async function renderSalesHistory() {
     const typeBadgeClass = sale.saleType === 'Credito' ? 'badge-warning' : 'badge-success';
     const statusBadgeClass = sale.paymentStatus === 'Pendiente' ? 'badge-danger' : 'badge-success';
     const saleItems = sale.items || [];
+    const hasPendingCredit = sale.saleType === 'Credito' && Number(sale.pendingBalance || 0) > 0;
     const productsPreview = saleItems.slice(0, 2).map(item => {
       const qty = Number(item.quantity || 0);
       return `${qty}x ${escapeHtml(item.name || 'Producto')}`;
@@ -227,9 +229,89 @@ async function renderSalesHistory() {
         <td><span class="badge ${statusBadgeClass}">${escapeHtml(sale.paymentStatus)}</span></td>
         <td><strong>${formatCurrency(sale.total || 0)}</strong></td>
         <td>${formatCurrency(sale.pendingBalance || 0)}</td>
+        <td>
+          ${hasPendingCredit
+            ? `<button class="btn btn-outline btn-sm sales-action-btn" onclick="openCreditPaymentModal('${sale.id}')">💵 Abonar</button>`
+            : '—'}
+        </td>
       </tr>
     `;
   }).join('');
+}
+
+async function openCreditPaymentModal(saleId) {
+  const sales = await DB.getSales();
+  const sale = sales.find(item => item.id === saleId);
+
+  if (!sale) {
+    showToast('No se encontró la venta seleccionada', 'error');
+    return;
+  }
+
+  const pendingBalance = Number(sale.pendingBalance || 0);
+  if (pendingBalance <= 0 || sale.saleType !== 'Credito') {
+    showToast('Esta venta no tiene saldo pendiente', 'warning');
+    return;
+  }
+
+  activePaymentSaleId = sale.id;
+
+  document.getElementById('creditPaymentSummary').innerHTML = `
+    <div class="summary-row">
+      <span>Comprobante:</span>
+      <span>#${escapeHtml(sale.number || '—')}</span>
+    </div>
+    <div class="summary-row">
+      <span>Cliente:</span>
+      <span>${escapeHtml(sale.customerName || 'Cliente general')}</span>
+    </div>
+    <div class="summary-row">
+      <span>Total venta:</span>
+      <span>${formatCurrency(sale.total || 0)}</span>
+    </div>
+    <div class="summary-row total">
+      <span>Saldo pendiente:</span>
+      <span>${formatCurrency(pendingBalance)}</span>
+    </div>
+  `;
+
+  document.getElementById('paymentAmount').value = '';
+  document.getElementById('paymentAmount').max = pendingBalance.toFixed(2);
+  document.getElementById('paymentNote').value = '';
+
+  openModal('creditPaymentModal');
+  setTimeout(() => document.getElementById('paymentAmount').focus(), 100);
+}
+
+function closeCreditPaymentModal() {
+  activePaymentSaleId = null;
+  closeModal('creditPaymentModal');
+}
+
+async function confirmCreditPayment() {
+  if (!activePaymentSaleId) {
+    showToast('No hay una venta seleccionada para abonar', 'error');
+    return;
+  }
+
+  const amount = Number(document.getElementById('paymentAmount').value || 0);
+  const note = document.getElementById('paymentNote').value.trim();
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    showToast('Ingresa un monto de abono válido', 'warning');
+    return;
+  }
+
+  const result = await DB.registerCreditPayment(activePaymentSaleId, { amount, note });
+  if (!result.success) {
+    showToast(result.error || 'No se pudo registrar el abono', 'error');
+    return;
+  }
+
+  closeCreditPaymentModal();
+  showToast('✅ Abono registrado correctamente', 'success');
+  await renderSalesHistory();
+  await renderStats();
 }
 
 /* ============ STATS CARDS ============ */

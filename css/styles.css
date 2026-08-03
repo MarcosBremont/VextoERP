@@ -1376,6 +1376,15 @@ h1, h2, h3, h4 {
   line-height: 1.35;
 }
 
+.sales-action-btn {
+  padding: 6px 10px;
+  font-size: 0.78rem;
+}
+
+#creditPaymentSummary {
+  margin-top: 0;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1024px) {
   .factura-layout {

@@ -551,6 +551,90 @@ const DB = {
       count: todaySales.length,
       total: todaySales.reduce((sum, s) => sum + s.total, 0)
     };
+  },
+
+  async registerCreditPayment(saleId, paymentData = {}) {
+    const amount = Number(paymentData.amount || 0);
+    if (!saleId) {
+      return { success: false, error: 'No se encontró la venta a actualizar' };
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return { success: false, error: 'El monto del abono debe ser mayor que cero' };
+    }
+
+    const session = this.getSession();
+    const payment = {
+      id: generateId(),
+      amount,
+      note: (paymentData.note || '').trim(),
+      date: new Date().toISOString(),
+      receivedBy: session ? session.name : '—'
+    };
+
+    const applyPaymentToSale = (sale) => {
+      const total = Number(sale.total || 0);
+      const currentPaid = Number(sale.paidAmount || 0);
+      const currentPending = Math.max(total - currentPaid, 0);
+
+      if (currentPending <= 0) {
+        throw new Error('Esta venta ya está saldada');
+      }
+      if (amount > currentPending) {
+        throw new Error('El abono excede el saldo pendiente');
+      }
+
+      const paidAmount = currentPaid + amount;
+      const pendingBalance = Math.max(total - paidAmount, 0);
+      const paymentHistory = Array.isArray(sale.paymentHistory) ? [...sale.paymentHistory, payment] : [payment];
+
+      return {
+        ...sale,
+        paidAmount,
+        pendingBalance,
+        paymentStatus: pendingBalance > 0 ? 'Pendiente' : 'Pagada',
+        paymentHistory,
+        lastPaymentDate: payment.date,
+        updatedAt: new Date().toISOString()
+      };
+    };
+
+    if (isFirebaseAvailable()) {
+      try {
+        const saleRef = db.collection(COLLECTIONS.SALES).doc(saleId);
+        const updated = await db.runTransaction(async (transaction) => {
+          const doc = await transaction.get(saleRef);
+          if (!doc.exists) {
+            throw new Error('Venta no encontrada');
+          }
+
+          const sale = { id: doc.id, ...doc.data() };
+          const nextSale = applyPaymentToSale(sale);
+          const { id, ...payload } = nextSale;
+
+          transaction.update(saleRef, payload);
+          return nextSale;
+        });
+
+        return { success: true, sale: updated, payment };
+      } catch (e) {
+        console.warn('Firebase bloqueado, usando localStorage:', e.message);
+      }
+    }
+
+    const sales = await this.getSales();
+    const index = sales.findIndex(s => s.id === saleId);
+    if (index === -1) {
+      return { success: false, error: 'Venta no encontrada' };
+    }
+
+    try {
+      const updatedSale = applyPaymentToSale(sales[index]);
+      sales[index] = updatedSale;
+      saveData(STORAGE_KEYS.SALES, sales);
+      return { success: true, sale: updatedSale, payment };
+    } catch (e) {
+      return { success: false, error: e.message || 'No se pudo registrar el abono' };
+    }
   }
 };
 
