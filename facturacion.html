@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VextoERP | Facturación</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="shortcut icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="logo-badge">V</div>
+        <div class="sidebar-brand-text">
+          <span class="brand-name">VextoERP</span>
+          <span class="brand-sub">Facturación & Inventario</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section">Principal</div>
+        <a href="facturacion.html" class="nav-item active">
+          <span class="nav-icon">🧾</span>
+          <span>Facturación</span>
+        </a>
+        <a href="inventario.html" class="nav-item">
+          <span class="nav-icon">📦</span>
+          <span>Inventario</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar">A</div>
+          <div class="user-details">
+            <span class="user-name">—</span>
+            <span class="user-role">—</span>
+          </div>
+        </div>
+        <button class="logout-btn" onclick="logout()">
+          <span>🚪</span>
+          <span>Cerrar Sesión</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ============ CONTENIDO PRINCIPAL ============ -->
+    <main class="main-content">
+      <header class="topbar">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button class="menu-toggle" aria-label="Abrir menú">☰</button>
+          <h2>🧾 Facturación</h2>
+        </div>
+        <div class="topbar-right">
+          <span class="topbar-date" id="todayDate"></span>
+        </div>
+      </header>
+
+      <div class="content-area">
+        <!-- Stats Cards -->
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <!-- Layout de Facturación -->
+        <div class="factura-layout">
+          <!-- Columna izquierda: Productos -->
+          <div class="card">
+            <div class="card-header">
+              <h3>🛒 Seleccionar Productos</h3>
+              <input type="text" class="search-input" id="searchProductInput" placeholder="🔍 Buscar producto...">
+            </div>
+            <div class="card-body">
+              <div class="product-list-billing" id="productListBilling">
+                <!-- Tarjetas generadas por JS -->
+              </div>
+              <div class="empty-state hidden" id="billingEmptyState">
+                <div class="empty-icon">🔍</div>
+                <h3>Sin resultados</h3>
+                <p>No se encontraron productos con ese nombre</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Columna derecha: Carrito -->
+          <div class="card cart-card">
+            <div class="cart-header">
+              <span style="font-size:1.2rem;">🧺</span>
+              <span>Carrito de Venta</span>
+            </div>
+
+            <div class="cart-body" id="cartBody">
+              <div class="cart-empty" id="cartEmpty">
+                <div class="cart-empty-icon">🛒</div>
+                <p>El carrito está vacío<br>Haz clic en un producto para agregarlo</p>
+              </div>
+              <div id="cartItems" class="hidden"></div>
+            </div>
+
+            <div class="cart-footer" id="cartFooter">
+              <div class="cart-total-row">
+                <span>Artículos:</span>
+                <span id="cartCount">0</span>
+              </div>
+              <div class="cart-total-row total">
+                <span>Total:</span>
+                <span id="cartTotal">RD$ 0.00</span>
+              </div>
+              <button class="btn btn-success cart-checkout-btn" id="checkoutBtn" onclick="openCheckoutModal()" disabled>
+                💳 Cobrar Venta
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ============ MODAL: CONFIRMAR COBRO / VENTA ============ -->
+  <div class="modal-overlay" id="checkoutModal">
+    <div class="modal" style="max-width: 460px;">
+      <div class="modal-header">
+        <h3>💳 Confirmar Venta</h3>
+        <button class="modal-close" onclick="closeModal('checkoutModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="sale-success">
+          <div class="success-icon">🧾</div>
+          <h3>¿Confirmar la venta?</h3>
+          <p>Se descontarán los productos del inventario</p>
+
+          <div class="sale-summary" id="checkoutSummary">
+            <!-- Resumen generado por JS -->
+          </div>
+
+          <div class="form-group" style="text-align:left;">
+            <label for="paymentMethod">Método de pago</label>
+            <select id="paymentMethod">
+              <option value="Efectivo">💵 Efectivo</option>
+              <option value="Tarjeta">💳 Tarjeta</option>
+              <option value="Transferencia">🏦 Transferencia</option>
+              <option value="QR">📱 QR</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('checkoutModal')">Cancelar</button>
+        <button class="btn btn-success" onclick="confirmSale()">✅ Confirmar y Cobrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: VENTA EXITOSA ============ -->
+  <div class="modal-overlay" id="successModal">
+    <div class="modal" style="max-width: 460px;">
+      <div class="modal-header">
+        <h3>🎉 Venta Completada</h3>
+        <button class="modal-close" onclick="closeSaleSuccess()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="sale-success">
+          <div class="success-icon">✅</div>
+          <h3>¡Venta registrada con éxito!</h3>
+          <p>El inventario ha sido actualizado</p>
+
+          <div class="sale-summary" id="successSummary">
+            <!-- Detalles del comprobante -->
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" style="width:100%;" onclick="closeSaleSuccess()">Continuar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/facturacion.js"></script>
+</body>
+</html>

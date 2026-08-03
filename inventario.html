@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VextoERP | Inventario</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="shortcut icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="logo-badge">V</div>
+        <div class="sidebar-brand-text">
+          <span class="brand-name">VextoERP</span>
+          <span class="brand-sub">Facturación & Inventario</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section">Principal</div>
+        <a href="facturacion.html" class="nav-item">
+          <span class="nav-icon">🧾</span>
+          <span>Facturación</span>
+        </a>
+        <a href="inventario.html" class="nav-item active">
+          <span class="nav-icon">📦</span>
+          <span>Inventario</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar">A</div>
+          <div class="user-details">
+            <span class="user-name">—</span>
+            <span class="user-role">—</span>
+          </div>
+        </div>
+        <button class="logout-btn" onclick="logout()">
+          <span>🚪</span>
+          <span>Cerrar Sesión</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ============ CONTENIDO PRINCIPAL ============ -->
+    <main class="main-content">
+      <header class="topbar">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button class="menu-toggle" aria-label="Abrir menú">☰</button>
+          <h2>📦 Inventario</h2>
+        </div>
+        <div class="topbar-right">
+          <span class="topbar-date" id="todayDate"></span>
+        </div>
+      </header>
+
+      <div class="content-area">
+        <!-- Stats Cards -->
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <!-- Tabla de Productos -->
+        <div class="card">
+          <div class="card-header">
+            <h3>🏷️ Productos del Inventario</h3>
+            <div class="toolbar">
+              <input type="text" class="search-input" id="searchInput" placeholder="🔍 Buscar producto...">
+              <button class="btn btn-primary btn-sm" onclick="openProductModal()">
+                <span>➕</span>
+                <span>Nuevo Producto</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Categoría</th>
+                    <th>Precio Venta</th>
+                    <th>Stock</th>
+                    <th>Estado</th>
+                    <th style="text-align:right;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="productsTableBody">
+                  <!-- Fillas generadas por JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Estado vacío -->
+            <div class="empty-state hidden" id="emptyState">
+              <div class="empty-icon">📦</div>
+              <h3>No hay productos</h3>
+              <p>Agrega tu primer producto al inventario</p>
+              <button class="btn btn-primary" onclick="openProductModal()">➕ Nuevo Producto</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ============ MODAL: NUEVO/EDITAR PRODUCTO ============ -->
+  <div class="modal-overlay" id="productModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modalTitle">➕ Nuevo Producto</h3>
+        <button class="modal-close" onclick="closeModal('productModal')">✕</button>
+      </div>
+
+      <form id="productForm" novalidate>
+        <div class="modal-body">
+          <input type="hidden" id="productId">
+
+          <div class="form-group">
+            <label for="productName">Nombre del producto *</label>
+            <input type="text" id="productName" placeholder="Ej: Crema hidratante" required>
+          </div>
+
+          <div class="form-group">
+            <label for="productDescription">Descripción</label>
+            <textarea id="productDescription" rows="2" placeholder="Descripción breve del producto"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="productCategory">Categoría *</label>
+            <select id="productCategory" required>
+              <option value="">Selecciona una categoría</option>
+              <option value="Cuidado Personal">Cuidado Personal</option>
+              <option value="Cabello">Cabello</option>
+              <option value="Rostro">Rostro</option>
+              <option value="Fragancias">Fragancias</option>
+              <option value="Maquillaje">Maquillaje</option>
+              <option value="Higiene">Higiene</option>
+              <option value="Aseo Hogar">Aseo Hogar</option>
+              <option value="Otros">Otros</option>
+            </select>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="productPrice">Precio de venta (RD$) *</label>
+              <input type="number" id="productPrice" min="0" step="0.01" placeholder="0.00" required>
+            </div>
+            <div class="form-group">
+              <label for="productCost">Precio de costo (RD$)</label>
+              <input type="number" id="productCost" min="0" step="0.01" placeholder="0.00">
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="productStock">Cantidad en stock *</label>
+              <input type="number" id="productStock" min="0" step="1" placeholder="0" required>
+            </div>
+            <div class="form-group">
+              <label for="productMinStock">Stock mínimo</label>
+              <input type="number" id="productMinStock" min="0" step="1" placeholder="0">
+              <div class="hint">Alerta cuando el stock baje de este nivel</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('productModal')">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="saveProductBtn">💾 Guardar Producto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: CONFIRMAR ELIMINACIÓN ============ -->
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3>🗑️ Eliminar Producto</h3>
+        <button class="modal-close" onclick="closeModal('deleteModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="text-align:center; color:var(--gray-600); margin-bottom: 8px;">
+          ¿Estás seguro de que deseas eliminar
+          <strong id="deleteProductName" style="color:var(--gray-900);">este producto</strong>?
+        </p>
+        <p style="text-align:center; font-size:0.85rem; color:var(--gray-400);">
+          Esta acción no se puede deshacer.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('deleteModal')">Cancelar</button>
+        <button class="btn btn-danger" onclick="confirmDeleteProduct()">🗑️ Sí, Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/inventario.js"></script>
+</body>
+</html>

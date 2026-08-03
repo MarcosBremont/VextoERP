@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VextoERP | Iniciar Sesión</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="shortcut icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
+  <style>
+    /* Tabs Login/Registro */
+    .auth-tabs {
+      display: flex;
+      margin-bottom: 24px;
+      background: var(--gray-100);
+      border-radius: var(--radius-sm);
+      padding: 4px;
+      gap: 4px;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 10px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--gray-500);
+      text-align: center;
+      transition: var(--transition);
+      cursor: pointer;
+      background: transparent;
+      border: none;
+    }
+    .auth-tab:hover {
+      color: var(--gray-700);
+    }
+    .auth-tab.active {
+      background: var(--white);
+      color: var(--primary);
+      box-shadow: var(--shadow-sm);
+    }
+    .auth-panel {
+      display: none;
+    }
+    .auth-panel.active {
+      display: block;
+      animation: fadeSlideUp 0.3s ease;
+    }
+    .auth-switch {
+      text-align: center;
+      margin-top: 18px;
+      font-size: 0.85rem;
+      color: var(--gray-500);
+    }
+    .auth-switch button {
+      color: var(--primary);
+      font-weight: 600;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .auth-switch button:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="logo-icon">V</div>
+      </div>
+      <h1>VextoERP</h1>
+      <p class="login-subtitle">Sistema de Facturación e Inventario</p>
+
+      <div class="login-error" id="loginError"></div>
+
+      <!-- Pestañas -->
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab active" id="tabLogin" onclick="switchTab('login')">🔐 Iniciar Sesión</button>
+        <button type="button" class="auth-tab" id="tabRegister" onclick="switchTab('register')">📝 Registrarse</button>
+      </div>
+
+      <!-- ====== PANEL LOGIN ====== -->
+      <div class="auth-panel active" id="panelLogin">
+        <form class="login-form" id="loginForm" novalidate>
+          <div class="form-group">
+            <label for="username">Usuario</label>
+            <div class="input-wrapper">
+              <span class="input-icon">👤</span>
+              <input type="text" id="username" placeholder="Ingresa tu usuario" autocomplete="username" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Contraseña</label>
+            <div class="input-wrapper">
+              <span class="input-icon">🔒</span>
+              <input type="password" id="password" placeholder="Ingresa tu contraseña" autocomplete="current-password" required>
+              <button type="button" class="toggle-password" id="togglePassword" aria-label="Mostrar contraseña">👁</button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="loginBtn">
+            <span id="loginBtnText">Ingresar</span>
+          </button>
+        </form>
+
+        <div class="auth-switch">
+          ¿No tienes cuenta? <button type="button" onclick="switchTab('register')">Crear una cuenta</button>
+        </div>
+      </div>
+
+      <!-- ====== PANEL REGISTRO ====== -->
+      <div class="auth-panel" id="panelRegister">
+        <form class="login-form" id="registerForm" novalidate>
+          <div class="form-group">
+            <label for="regName">Nombre completo *</label>
+            <div class="input-wrapper">
+              <span class="input-icon">👤</span>
+              <input type="text" id="regName" placeholder="Ej: Juan Pérez" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="regUsername">Usuario *</label>
+            <div class="input-wrapper">
+              <span class="input-icon">🆔</span>
+              <input type="text" id="regUsername" placeholder="Elige un nombre de usuario" autocomplete="username" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="regPassword">Contraseña *</label>
+            <div class="input-wrapper">
+              <span class="input-icon">🔒</span>
+              <input type="password" id="regPassword" placeholder="Mínimo 6 caracteres" autocomplete="new-password" required>
+              <button type="button" class="toggle-password" data-target="regPassword" aria-label="Mostrar contraseña">👁</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="regConfirmPassword">Confirmar contraseña *</label>
+            <div class="input-wrapper">
+              <span class="input-icon">🔒</span>
+              <input type="password" id="regConfirmPassword" placeholder="Repite la contraseña" autocomplete="new-password" required>
+              <button type="button" class="toggle-password" data-target="regConfirmPassword" aria-label="Mostrar contraseña">👁</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="regRole">Rol</label>
+            <select id="regRole">
+              <option value="Vendedor">Vendedor</option>
+              <option value="Administrador">Administrador</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="registerBtn">
+            <span id="registerBtnText">Crear Cuenta</span>
+          </button>
+        </form>
+
+        <div class="auth-switch">
+          ¿Ya tienes cuenta? <button type="button" onclick="switchTab('login')">Iniciar Sesión</button>
+        </div>
+      </div>
+
+      <div class="login-demo">
+        <strong>Demo:</strong> usuario <strong>admin</strong> · contraseña <strong>admin123</strong>
+      </div>
+
+      <p class="login-footer">© 2026 VextoERP · Todos los derechos reservados</p>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>
