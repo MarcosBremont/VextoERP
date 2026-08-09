@@ -70,6 +70,10 @@
             <h3>🏷️ Productos del Inventario</h3>
             <div class="toolbar">
               <input type="text" class="search-input" id="searchInput" placeholder="🔍 Buscar producto...">
+              <button class="btn btn-secondary btn-sm" onclick="openCategoriesModal()">
+                <span>🏷️</span>
+                <span>Categorías</span>
+              </button>
               <button class="btn btn-primary btn-sm" onclick="openProductModal()">
                 <span>➕</span>
                 <span>Nuevo Producto</span>
@@ -135,15 +139,8 @@
             <label for="productCategory">Categoría *</label>
             <select id="productCategory" required>
               <option value="">Selecciona una categoría</option>
-              <option value="Cuidado Personal">Cuidado Personal</option>
-              <option value="Cabello">Cabello</option>
-              <option value="Rostro">Rostro</option>
-              <option value="Fragancias">Fragancias</option>
-              <option value="Maquillaje">Maquillaje</option>
-              <option value="Higiene">Higiene</option>
-              <option value="Aseo Hogar">Aseo Hogar</option>
-              <option value="Otros">Otros</option>
             </select>
+            <div class="hint">¿Falta una categoría? Adminístralas desde el botón "🏷️ Categorías".</div>
           </div>
 
           <div class="form-grid-2">
@@ -197,6 +194,28 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal('deleteModal')">Cancelar</button>
         <button class="btn btn-danger" onclick="confirmDeleteProduct()">🗑️ Sí, Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: GESTIONAR CATEGORÍAS ============ -->
+  <div class="modal-overlay" id="categoriesModal">
+    <div class="modal" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3>🏷️ Categorías</h3>
+        <button class="modal-close" onclick="closeModal('categoriesModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="categoryForm" style="display:flex; gap:8px; align-items:flex-start; margin-bottom:18px;">
+          <input type="text" id="newCategoryName" placeholder="Nombre de la nueva categoría" style="flex:1;" required>
+          <button type="submit" class="btn btn-primary btn-sm">➕ Agregar</button>
+        </form>
+        <ul class="category-list" id="categoryList">
+          <!-- Generado por JS -->
+        </ul>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('categoriesModal')">Cerrar</button>
       </div>
     </div>
   </div>

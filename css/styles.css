@@ -850,6 +850,34 @@ h1, h2, h3, h4 {
 .badge-indigo { background: var(--primary-light); color: var(--primary); }
 .badge-gray { background: var(--gray-100); color: var(--gray-600); }
 
+/* ---------- Lista de categorías ---------- */
+.category-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.category-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--gray-50);
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  color: var(--gray-700);
+}
+
+.category-list-empty {
+  text-align: center;
+  color: var(--gray-400);
+  font-size: 0.85rem;
+  padding: 16px 0;
+}
+
 /* ---------- Modal ---------- */
 .modal-overlay {
   position: fixed;

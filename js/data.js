@@ -8,6 +8,7 @@
 const STORAGE_KEYS = {
   USERS: 'vexto_users',
   PRODUCTS: 'vexto_products',
+  CATEGORIES: 'vexto_categories',
   SALES: 'vexto_sales',
   SESSION: 'vexto_session',
   SALE_NUMBER: 'vexto_sale_number',
@@ -18,6 +19,7 @@ const STORAGE_KEYS = {
 const COLLECTIONS = {
   USERS: 'users',
   PRODUCTS: 'products',
+  CATEGORIES: 'categories',
   SALES: 'sales',
   COUNTERS: 'counters'
 };
@@ -88,6 +90,17 @@ function saveData(key, data) {
 // Detectar si Firebase está disponible y tiene permisos
 function isFirebaseAvailable() {
   return typeof firebase !== 'undefined' && typeof db !== 'undefined';
+}
+
+function getCurrentOwnerId() {
+  const session = readData(STORAGE_KEYS.SESSION, null);
+  return session && session.id ? session.id : null;
+}
+
+function filterOwnedRecords(records) {
+  const ownerId = getCurrentOwnerId();
+  if (!ownerId) return [];
+  return (records || []).filter(record => record && record.ownerId === ownerId);
 }
 
 /* ============================================
@@ -259,22 +272,33 @@ const DB = {
 
   /* ============ PRODUCTOS / INVENTARIO ============ */
   async getProducts() {
+    const ownerId = getCurrentOwnerId();
+    if (!ownerId) return [];
+
     if (isFirebaseAvailable()) {
       try {
         const snapshot = await db.collection(COLLECTIONS.PRODUCTS)
-          .orderBy('createdAt', 'desc')
           .get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(product => product.ownerId === ownerId)
+          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
       } catch (e) {
         console.warn('Firebase bloqueado, usando localStorage:', e.message);
       }
     }
-    return readData(STORAGE_KEYS.PRODUCTS, []);
+    return filterOwnedRecords(readData(STORAGE_KEYS.PRODUCTS, []));
   },
 
   async addProduct(productData) {
+    const ownerId = getCurrentOwnerId();
+    if (!ownerId) {
+      throw new Error('No hay una sesión activa para registrar productos');
+    }
+
     const newProduct = {
       id: generateId(),
+      ownerId,
       name: productData.name.trim(),
       description: (productData.description || '').trim(),
       category: productData.category.trim(),
@@ -297,13 +321,16 @@ const DB = {
     }
 
     // Fallback: localStorage
-    const products = await this.getProducts();
+    const products = readData(STORAGE_KEYS.PRODUCTS, []);
     products.push(newProduct);
     saveData(STORAGE_KEYS.PRODUCTS, products);
     return newProduct;
   },
 
   async updateProduct(id, productData) {
+    const ownerId = getCurrentOwnerId();
+    if (!ownerId) return null;
+
     const updatedData = {
       name: productData.name.trim(),
       description: (productData.description || '').trim(),
@@ -317,7 +344,10 @@ const DB = {
 
     if (isFirebaseAvailable()) {
       try {
-        await db.collection(COLLECTIONS.PRODUCTS).doc(id).update(updatedData);
+        const productRef = db.collection(COLLECTIONS.PRODUCTS).doc(id);
+        const doc = await productRef.get();
+        if (!doc.exists || doc.data().ownerId !== ownerId) return null;
+        await productRef.update(updatedData);
         return { id, ...updatedData };
       } catch (e) {
         console.warn('Firebase bloqueado, usando localStorage:', e.message);
@@ -325,8 +355,8 @@ const DB = {
     }
 
     // Fallback: localStorage
-    const products = await this.getProducts();
-    const index = products.findIndex(p => p.id === id);
+    const products = readData(STORAGE_KEYS.PRODUCTS, []);
+    const index = products.findIndex(p => p.id === id && p.ownerId === ownerId);
     if (index === -1) return null;
     products[index] = { ...products[index], ...updatedData };
     saveData(STORAGE_KEYS.PRODUCTS, products);
@@ -334,9 +364,15 @@ const DB = {
   },
 
   async deleteProduct(id) {
+    const ownerId = getCurrentOwnerId();
+    if (!ownerId) return false;
+
     if (isFirebaseAvailable()) {
       try {
-        await db.collection(COLLECTIONS.PRODUCTS).doc(id).delete();
+        const productRef = db.collection(COLLECTIONS.PRODUCTS).doc(id);
+        const doc = await productRef.get();
+        if (!doc.exists || doc.data().ownerId !== ownerId) return false;
+        await productRef.delete();
         return true;
       } catch (e) {
         console.warn('Firebase bloqueado, usando localStorage:', e.message);
@@ -344,14 +380,17 @@ const DB = {
     }
 
     // Fallback: localStorage
-    const products = await this.getProducts();
-    const filtered = products.filter(p => p.id !== id);
+    const products = readData(STORAGE_KEYS.PRODUCTS, []);
+    const filtered = products.filter(p => !(p.id === id && p.ownerId === ownerId));
     saveData(STORAGE_KEYS.PRODUCTS, filtered);
     return true;
   },
 
   // Descontar stock (al vender)
   async decreaseStock(productId, quantity) {
+    const ownerId = getCurrentOwnerId();
+    if (!ownerId) return { success: false, error: 'No hay una sesión activa' };
+
     if (isFirebaseAvailable()) {
       try {
         const productRef = db.collection(COLLECTIONS.PRODUCTS).doc(productId);
@@ -362,6 +401,9 @@ const DB = {
             throw new Error('Producto no encontrado');
           }
           const product = doc.data();
+          if (product.ownerId !== ownerId) {
+            throw new Error('No tienes acceso a este producto');
+          }
           if (product.stock < quantity) {
             throw new Error('Stock insuficiente');
           }
@@ -378,8 +420,8 @@ const DB = {
     }
 
     // Fallback: localStorage
-    const products = await this.getProducts();
-    const product = products.find(p => p.id === productId);
+    const products = readData(STORAGE_KEYS.PRODUCTS, []);
+    const product = products.find(p => p.id === productId && p.ownerId === ownerId);
     if (!product) return { success: false, error: 'Producto no encontrado' };
     if (product.stock < quantity) return { success: false, error: 'Stock insuficiente' };
 
@@ -415,19 +457,114 @@ const DB = {
     return { text: 'Disponible', cls: 'badge-success' };
   },
 
-  /* ============ VENTAS / FACTURACIÓN ============ */
-  async getSales() {
+  /* ============ CATEGORÍAS ============ */
+  async getCategories() {
+    const ownerId = getCurrentOwnerId();
+    if (!ownerId) return [];
+
     if (isFirebaseAvailable()) {
       try {
-        const snapshot = await db.collection(COLLECTIONS.SALES)
-          .orderBy('date', 'desc')
-          .get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const snapshot = await db.collection(COLLECTIONS.CATEGORIES).get();
+        return snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(category => category.ownerId === ownerId)
+          .sort((a, b) => a.name.localeCompare(b.name));
       } catch (e) {
         console.warn('Firebase bloqueado, usando localStorage:', e.message);
       }
     }
-    return readData(STORAGE_KEYS.SALES, []);
+    return filterOwnedRecords(readData(STORAGE_KEYS.CATEGORIES, []))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  },
+
+  async addCategory(name) {
+    const ownerId = getCurrentOwnerId();
+    if (!ownerId) throw new Error('No hay una sesión activa');
+
+    const trimmed = (name || '').trim();
+    if (!trimmed) throw new Error('El nombre de la categoría es obligatorio');
+
+    const existing = await this.getCategories();
+    if (existing.some(c => c.name.toLowerCase() === trimmed.toLowerCase())) {
+      throw new Error('Esa categoría ya existe');
+    }
+
+    const newCategory = {
+      id: generateId(),
+      ownerId,
+      name: trimmed,
+      createdAt: new Date().toISOString()
+    };
+
+    if (isFirebaseAvailable()) {
+      try {
+        const { id, ...data } = newCategory;
+        const docRef = await db.collection(COLLECTIONS.CATEGORIES).add(data);
+        return { id: docRef.id, ...data };
+      } catch (e) {
+        console.warn('Firebase bloqueado, usando localStorage:', e.message);
+      }
+    }
+
+    // Fallback: localStorage
+    const categories = readData(STORAGE_KEYS.CATEGORIES, []);
+    categories.push(newCategory);
+    saveData(STORAGE_KEYS.CATEGORIES, categories);
+    return newCategory;
+  },
+
+  async deleteCategory(id) {
+    const ownerId = getCurrentOwnerId();
+    if (!ownerId) return false;
+
+    if (isFirebaseAvailable()) {
+      try {
+        const categoryRef = db.collection(COLLECTIONS.CATEGORIES).doc(id);
+        const doc = await categoryRef.get();
+        if (!doc.exists || doc.data().ownerId !== ownerId) return false;
+        await categoryRef.delete();
+        return true;
+      } catch (e) {
+        console.warn('Firebase bloqueado, usando localStorage:', e.message);
+      }
+    }
+
+    // Fallback: localStorage
+    const categories = readData(STORAGE_KEYS.CATEGORIES, []);
+    const filtered = categories.filter(c => !(c.id === id && c.ownerId === ownerId));
+    saveData(STORAGE_KEYS.CATEGORIES, filtered);
+    return true;
+  },
+
+  // Crear categorías por defecto si el usuario aún no tiene ninguna
+  async ensureDefaultCategories() {
+    const categories = await this.getCategories();
+    if (categories.length > 0) return;
+
+    const defaults = ['Cuidado Personal', 'Cabello', 'Rostro', 'Fragancias', 'Maquillaje', 'Higiene', 'Aseo Hogar', 'Otros'];
+    for (const name of defaults) {
+      await this.addCategory(name);
+    }
+  },
+
+  /* ============ VENTAS / FACTURACIÓN ============ */
+  async getSales() {
+    const ownerId = getCurrentOwnerId();
+    if (!ownerId) return [];
+
+    if (isFirebaseAvailable()) {
+      try {
+        const snapshot = await db.collection(COLLECTIONS.SALES)
+          .get();
+        return snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(sale => sale.ownerId === ownerId)
+          .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+      } catch (e) {
+        console.warn('Firebase bloqueado, usando localStorage:', e.message);
+      }
+    }
+    return filterOwnedRecords(readData(STORAGE_KEYS.SALES, []));
   },
 
   async getNextSaleNumber() {
@@ -498,6 +635,11 @@ const DB = {
       return { success: false, error: 'El carrito está vacío' };
     }
 
+    const ownerId = getCurrentOwnerId();
+    if (!ownerId) {
+      return { success: false, error: 'No hay una sesión activa para registrar la venta' };
+    }
+
     // Validar stock primero
     const products = await this.getProducts();
     for (const item of cartItems) {
@@ -537,6 +679,7 @@ const DB = {
 
     const saleData = {
       id: generateId(),
+      ownerId,
       number: await this.getNextSaleNumber(),
       items: cartItems.map(item => ({
         productId: item.productId,
@@ -573,7 +716,7 @@ const DB = {
     }
 
     // Fallback: localStorage
-    const sales = await this.getSales();
+    const sales = readData(STORAGE_KEYS.SALES, []);
     sales.push(saleData);
     saveData(STORAGE_KEYS.SALES, sales);
     return { success: true, sale: saleData };
@@ -598,9 +741,13 @@ const DB = {
   },
 
   async registerCreditPayment(saleId, paymentData = {}) {
+    const ownerId = getCurrentOwnerId();
     const amount = Number(paymentData.amount || 0);
     if (!saleId) {
       return { success: false, error: 'No se encontró la venta a actualizar' };
+    }
+    if (!ownerId) {
+      return { success: false, error: 'No hay una sesión activa' };
     }
     if (!Number.isFinite(amount) || amount <= 0) {
       return { success: false, error: 'El monto del abono debe ser mayor que cero' };
@@ -652,6 +799,9 @@ const DB = {
           }
 
           const sale = { id: doc.id, ...doc.data() };
+          if (sale.ownerId !== ownerId) {
+            throw new Error('No tienes acceso a esta venta');
+          }
           const nextSale = applyPaymentToSale(sale);
           const { id, ...payload } = nextSale;
 
@@ -665,8 +815,8 @@ const DB = {
       }
     }
 
-    const sales = await this.getSales();
-    const index = sales.findIndex(s => s.id === saleId);
+    const sales = readData(STORAGE_KEYS.SALES, []);
+    const index = sales.findIndex(s => s.id === saleId && s.ownerId === ownerId);
     if (index === -1) {
       return { success: false, error: 'Venta no encontrada' };
     }

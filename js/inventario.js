@@ -6,13 +6,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Proteger ruta: si no hay sesión, redirigir al login
   if (!requireAuth()) return;
 
-  // Inicializar datos de ejemplo en la primera visita
-  await seedSampleData();
-
   // UI común
   renderSidebarUser();
   renderTopbarDate();
   setupMobileMenu();
+
+  // Categorías (crear por defecto la primera vez)
+  await DB.ensureDefaultCategories();
 
   // Cargar datos
   await renderStats();
@@ -142,6 +142,7 @@ async function openProductModal(productId = null) {
 
   form.reset();
   document.getElementById('productId').value = '';
+  await renderCategoryOptions();
 
   if (productId) {
     const product = (await DB.getProducts()).find(p => p.id === productId);
@@ -237,6 +238,74 @@ async function confirmDeleteProduct() {
   await renderStats();
   await renderProductsTable();
 }
+
+/* ============ CATEGORÍAS ============ */
+
+// Rellenar el <select> de categorías del formulario de producto
+async function renderCategoryOptions() {
+  const select = document.getElementById('productCategory');
+  const currentValue = select.value;
+  const categories = await DB.getCategories();
+
+  select.innerHTML = '<option value="">Selecciona una categoría</option>' +
+    categories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+
+  if (currentValue && categories.some(c => c.name === currentValue)) {
+    select.value = currentValue;
+  }
+}
+
+async function openCategoriesModal() {
+  await renderCategoriesList();
+  openModal('categoriesModal');
+  setTimeout(() => document.getElementById('newCategoryName').focus(), 100);
+}
+
+async function renderCategoriesList() {
+  const list = document.getElementById('categoryList');
+  const categories = await DB.getCategories();
+
+  if (categories.length === 0) {
+    list.innerHTML = '<li class="category-list-empty">Aún no hay categorías</li>';
+    return;
+  }
+
+  list.innerHTML = categories.map(c => `
+    <li class="category-list-item">
+      <span>${escapeHtml(c.name)}</span>
+      <button type="button" class="btn-icon delete-btn" onclick="deleteCategory('${c.id}')" title="Eliminar categoría">🗑️</button>
+    </li>
+  `).join('');
+}
+
+async function deleteCategory(categoryId) {
+  if (!confirm('¿Eliminar esta categoría? Los productos que ya la usan conservarán el nombre, pero no podrás volver a seleccionarla.')) {
+    return;
+  }
+
+  await DB.deleteCategory(categoryId);
+  showToast('🗑️ Categoría eliminada');
+  await renderCategoriesList();
+  await renderCategoryOptions();
+}
+
+document.getElementById('categoryForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const input = document.getElementById('newCategoryName');
+  const name = input.value.trim();
+  if (!name) return;
+
+  try {
+    await DB.addCategory(name);
+    input.value = '';
+    showToast('✅ Categoría agregada');
+    await renderCategoriesList();
+    await renderCategoryOptions();
+  } catch (err) {
+    showToast(err.message || 'No se pudo agregar la categoría', 'error');
+  }
+});
 
 /* ============ UTILIDADES ============ */
 function getInitials(name) {
