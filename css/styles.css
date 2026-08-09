@@ -322,6 +322,13 @@ h1, h2, h3, h4 {
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
 }
 
+.btn-plus {
+  color: var(--white);
+  font-weight: 800;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
 .btn-secondary {
   background: var(--gray-100);
   color: var(--gray-700);

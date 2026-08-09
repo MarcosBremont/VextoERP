@@ -70,13 +70,13 @@
             <h3>🏷️ Productos del Inventario</h3>
             <div class="toolbar">
               <input type="text" class="search-input" id="searchInput" placeholder="🔍 Buscar producto...">
+              <button class="btn btn-primary btn-sm" onclick="openProductModal()">
+                <span class="btn-plus">+</span>
+                <span>Nuevo Producto</span>
+              </button>
               <button class="btn btn-secondary btn-sm" onclick="openCategoriesModal()">
                 <span>🏷️</span>
                 <span>Categorías</span>
-              </button>
-              <button class="btn btn-primary btn-sm" onclick="openProductModal()">
-                <span>➕</span>
-                <span>Nuevo Producto</span>
               </button>
             </div>
           </div>
@@ -105,7 +105,7 @@
               <div class="empty-icon">📦</div>
               <h3>No hay productos</h3>
               <p>Agrega tu primer producto al inventario</p>
-              <button class="btn btn-primary" onclick="openProductModal()">➕ Nuevo Producto</button>
+              <button class="btn btn-primary" onclick="openProductModal()"><span class="btn-plus">+</span> Nuevo Producto</button>
             </div>
           </div>
         </div>
@@ -208,7 +208,7 @@
       <div class="modal-body">
         <form id="categoryForm" style="display:flex; gap:8px; align-items:flex-start; margin-bottom:18px;">
           <input type="text" id="newCategoryName" placeholder="Nombre de la nueva categoría" style="flex:1;" required>
-          <button type="submit" class="btn btn-primary btn-sm">➕ Agregar</button>
+          <button type="submit" class="btn btn-primary btn-sm"><span class="btn-plus">+</span> Agregar</button>
         </form>
         <ul class="category-list" id="categoryList">
           <!-- Generado por JS -->
