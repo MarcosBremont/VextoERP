@@ -21,7 +21,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Búsqueda en tiempo real
   const searchInput = document.getElementById('searchInput');
   searchInput.addEventListener('input', renderProductsTable);
+
+  // Alternar campos de stock según el checkbox "sin stock físico"
+  document.getElementById('productUnlimitedStock').addEventListener('change', toggleStockFields);
 });
+
+// Mostrar/ocultar y (des)requerir los campos de stock del formulario
+function toggleStockFields() {
+  const unlimited = document.getElementById('productUnlimitedStock').checked;
+  const group = document.getElementById('stockFieldsGroup');
+  const stockInput = document.getElementById('productStock');
+
+  group.classList.toggle('hidden', unlimited);
+  stockInput.required = !unlimited;
+}
 
 /* ============ STATS CARDS ============ */
 async function renderStats() {
@@ -83,8 +96,12 @@ async function renderProductsTable() {
     );
   }
 
-  // Ordenar: primero los de menor stock
-  products.sort((a, b) => a.stock - b.stock);
+  // Ordenar: primero los de menor stock (los de stock ilimitado van al final)
+  products.sort((a, b) => {
+    const stockA = a.unlimitedStock ? Infinity : a.stock;
+    const stockB = b.unlimitedStock ? Infinity : b.stock;
+    return stockA - stockB;
+  });
 
   const table = document.querySelector('.data-table');
   if (products.length === 0) {
@@ -97,7 +114,7 @@ async function renderProductsTable() {
   emptyState.classList.add('hidden');
 
   tbody.innerHTML = products.map(product => {
-    const status = DB.getStockStatus(product.stock, product.minStock);
+    const status = DB.getStockStatus(product.stock, product.minStock, product.unlimitedStock);
     const initials = getInitials(product.name);
     const badgeClass = status.cls === 'badge-danger' ? 'gray' : status.cls === 'badge-warning' ? 'amber' : 'green';
 
@@ -115,8 +132,9 @@ async function renderProductsTable() {
         <td><span class="badge badge-indigo">${escapeHtml(product.category || '—')}</span></td>
         <td><strong>${formatCurrency(product.price)}</strong></td>
         <td>
-          <strong>${product.stock} </strong>
-          <span style="font-size:0.75rem; color:var(--gray-400);">uds.</span>
+          ${product.unlimitedStock
+            ? '<strong>♾️ Ilimitado</strong>'
+            : `<strong>${product.stock} </strong><span style="font-size:0.75rem; color:var(--gray-400);">uds.</span>`}
         </td>
         <td><span class="badge ${status.cls}">${status.text}</span></td>
         <td>
@@ -155,12 +173,14 @@ async function openProductModal(productId = null) {
     document.getElementById('productCategory').value = product.category || '';
     document.getElementById('productPrice').value = product.price;
     document.getElementById('productCost').value = product.cost || '';
-    document.getElementById('productStock').value = product.stock;
-    document.getElementById('productMinStock').value = product.minStock || 0;
+    document.getElementById('productUnlimitedStock').checked = !!product.unlimitedStock;
+    document.getElementById('productStock').value = product.unlimitedStock ? '' : product.stock;
+    document.getElementById('productMinStock').value = product.unlimitedStock ? 0 : (product.minStock || 0);
   } else {
     title.textContent = '➕ Nuevo Producto';
   }
 
+  toggleStockFields();
   openModal('productModal');
   setTimeout(() => document.getElementById('productName').focus(), 100);
 }
@@ -179,6 +199,7 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
   const category = document.getElementById('productCategory').value;
   const price = parseFloat(document.getElementById('productPrice').value);
   const cost = document.getElementById('productCost').value ? parseFloat(document.getElementById('productCost').value) : null;
+  const unlimitedStock = document.getElementById('productUnlimitedStock').checked;
   const stock = parseInt(document.getElementById('productStock').value, 10);
   const minStock = parseInt(document.getElementById('productMinStock').value, 10);
 
@@ -195,12 +216,12 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
     showToast('Ingresa un precio de venta válido', 'error');
     return;
   }
-  if (isNaN(stock) || stock < 0) {
+  if (!unlimitedStock && (isNaN(stock) || stock < 0)) {
     showToast('Ingresa una cantidad de stock válida', 'error');
     return;
   }
 
-  const productData = { name, description, category, price, cost, stock, minStock: minStock || 0 };
+  const productData = { name, description, category, price, cost, unlimitedStock, stock, minStock: minStock || 0 };
 
   if (productId) {
     await DB.updateProduct(productId, productData);

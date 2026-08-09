@@ -103,6 +103,20 @@ function filterOwnedRecords(records) {
   return (records || []).filter(record => record && record.ownerId === ownerId);
 }
 
+// Normaliza los campos de stock de un producto.
+// Los productos sin stock físico (servicios, recursos digitales) no llevan
+// cantidad ni stock mínimo: se marcan como unlimitedStock y no se controlan.
+function normalizeStockFields(productData) {
+  if (productData.unlimitedStock) {
+    return { stock: null, minStock: 0, unlimitedStock: true };
+  }
+  return {
+    stock: parseInt(productData.stock, 10) || 0,
+    minStock: parseInt(productData.minStock, 10) || 0,
+    unlimitedStock: false
+  };
+}
+
 /* ============================================
    BASE DE DATOS (API de datos con Firebase)
    Con fallback automático a localStorage
@@ -304,8 +318,7 @@ const DB = {
       category: productData.category.trim(),
       price: parseFloat(productData.price) || 0,
       cost: productData.cost ? parseFloat(productData.cost) : null,
-      stock: parseInt(productData.stock, 10) || 0,
-      minStock: parseInt(productData.minStock, 10) || 0,
+      ...normalizeStockFields(productData),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -337,8 +350,7 @@ const DB = {
       category: productData.category.trim(),
       price: parseFloat(productData.price) || 0,
       cost: productData.cost ? parseFloat(productData.cost) : null,
-      stock: parseInt(productData.stock, 10) || 0,
-      minStock: parseInt(productData.minStock, 10) || 0,
+      ...normalizeStockFields(productData),
       updatedAt: new Date().toISOString()
     };
 
@@ -404,6 +416,7 @@ const DB = {
           if (product.ownerId !== ownerId) {
             throw new Error('No tienes acceso a este producto');
           }
+          if (product.unlimitedStock) return;
           if (product.stock < quantity) {
             throw new Error('Stock insuficiente');
           }
@@ -423,6 +436,7 @@ const DB = {
     const products = readData(STORAGE_KEYS.PRODUCTS, []);
     const product = products.find(p => p.id === productId && p.ownerId === ownerId);
     if (!product) return { success: false, error: 'Producto no encontrado' };
+    if (product.unlimitedStock) return { success: true };
     if (product.stock < quantity) return { success: false, error: 'Stock insuficiente' };
 
     product.stock -= quantity;
@@ -433,7 +447,7 @@ const DB = {
 
   async getLowStockProducts() {
     const products = await this.getProducts();
-    return products.filter(p => p.stock <= p.minStock);
+    return products.filter(p => !p.unlimitedStock && p.stock <= p.minStock);
   },
 
   async getTotalProducts() {
@@ -443,15 +457,16 @@ const DB = {
 
   async getTotalUnits() {
     const products = await this.getProducts();
-    return products.reduce((sum, p) => sum + p.stock, 0);
+    return products.reduce((sum, p) => sum + (p.unlimitedStock ? 0 : p.stock), 0);
   },
 
   async getInventoryValue() {
     const products = await this.getProducts();
-    return products.reduce((sum, p) => sum + (p.stock * (p.cost || p.price || 0)), 0);
+    return products.reduce((sum, p) => sum + (p.unlimitedStock ? 0 : p.stock * (p.cost || p.price || 0)), 0);
   },
 
-  getStockStatus(stock, minStock) {
+  getStockStatus(stock, minStock, unlimitedStock) {
+    if (unlimitedStock) return { text: 'Disponible', cls: 'badge-success' };
     if (stock <= 0) return { text: 'Sin stock', cls: 'badge-danger' };
     if (stock <= minStock) return { text: 'Stock bajo', cls: 'badge-warning' };
     return { text: 'Disponible', cls: 'badge-success' };
@@ -647,7 +662,7 @@ const DB = {
       if (!product) {
         return { success: false, error: 'Producto no encontrado: ' + item.name };
       }
-      if (product.stock < item.quantity) {
+      if (!product.unlimitedStock && product.stock < item.quantity) {
         return {
           success: false,
           error: 'Stock insuficiente para: ' + item.name +

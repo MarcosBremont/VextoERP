@@ -334,7 +334,7 @@ async function renderStats() {
   try {
     const todaySales = await DB.getTodaySales();
     const totalSales = await DB.getTotalSales();
-    const lowStock = allProducts.filter(p => p.stock <= p.minStock).length;
+    const lowStock = allProducts.filter(p => !p.unlimitedStock && p.stock <= p.minStock).length;
 
     const stats = [
       {
@@ -391,11 +391,13 @@ function renderProductsBilling() {
     );
   }
 
-  // Ordenar: sin stock al final, luego por stock bajo primero
+  // Ordenar: sin stock al final, luego por stock bajo primero (ilimitado cuenta como con stock)
   products.sort((a, b) => {
-    if (a.stock <= 0 && b.stock > 0) return 1;
-    if (a.stock > 0 && b.stock <= 0) return -1;
-    return a.stock - b.stock;
+    const stockA = a.unlimitedStock ? Infinity : a.stock;
+    const stockB = b.unlimitedStock ? Infinity : b.stock;
+    if (stockA <= 0 && stockB > 0) return 1;
+    if (stockA > 0 && stockB <= 0) return -1;
+    return stockA - stockB;
   });
 
   if (products.length === 0) {
@@ -407,7 +409,7 @@ function renderProductsBilling() {
   emptyState.classList.add('hidden');
 
   container.innerHTML = products.map(product => {
-    const outOfStock = product.stock <= 0;
+    const outOfStock = !product.unlimitedStock && product.stock <= 0;
     const inCart = cart.find(item => item.productId === product.id);
     const selected = inCart ? 'selected' : '';
     const disabled = outOfStock ? 'disabled' : '';
@@ -419,7 +421,7 @@ function renderProductsBilling() {
         <div class="bp-name">${escapeHtml(product.name)}</div>
         <div class="bp-price">${formatCurrency(product.price)}</div>
         <div class="bp-stock">
-          ${outOfStock ? '❌ Sin stock' : `${product.stock} disponibles`}
+          ${product.unlimitedStock ? '♾️ Ilimitado' : (outOfStock ? '❌ Sin stock' : `${product.stock} disponibles`)}
           ${inCart ? ` · En carrito: ${inCart.quantity}` : ''}
         </div>
       </div>
@@ -431,7 +433,7 @@ function renderProductsBilling() {
 function addToCart(productId) {
   const product = allProducts.find(p => p.id === productId);
   if (!product) return;
-  if (product.stock <= 0) {
+  if (!product.unlimitedStock && product.stock <= 0) {
     showToast('Este producto no tiene stock disponible', 'warning');
     return;
   }
@@ -440,7 +442,7 @@ function addToCart(productId) {
 
   if (existing) {
     // Verificar que no exceda el stock
-    if (existing.quantity >= product.stock) {
+    if (!product.unlimitedStock && existing.quantity >= product.stock) {
       showToast('No hay más unidades disponibles de este producto', 'warning');
       return;
     }
@@ -464,7 +466,7 @@ function increaseQuantity(productId) {
   const item = cart.find(i => i.productId === productId);
   if (!item || !product) return;
 
-  if (item.quantity >= product.stock) {
+  if (!product.unlimitedStock && item.quantity >= product.stock) {
     showToast('No hay más unidades disponibles', 'warning');
     return;
   }
