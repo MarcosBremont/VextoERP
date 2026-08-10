@@ -677,7 +677,10 @@ const DB = {
     }
 
     // Crear registro de venta
-    const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const discountPercent = Math.min(Math.max(Number(options.discountPercent || 0), 0), 100);
+    const discountAmount = subtotal * discountPercent / 100;
+    const total = Math.max(subtotal - discountAmount, 0);
     const session = this.getSession();
 
     const saleType = options.saleType === 'Credito' ? 'Credito' : 'Contado';
@@ -703,6 +706,9 @@ const DB = {
         quantity: item.quantity,
         subtotal: item.price * item.quantity
       })),
+      subtotal,
+      discountPercent,
+      discountAmount,
       total,
       paymentMethod: saleType === 'Credito' ? 'Crédito' : (options.paymentMethod || 'Efectivo'),
       saleType,

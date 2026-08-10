@@ -1381,6 +1381,35 @@ h1, h2, h3, h4 {
   resize: vertical;
 }
 
+.discount-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.discount-chip {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--gray-200);
+  background: var(--white);
+  color: var(--gray-600);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.discount-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+.sale-summary .summary-row.discount-row {
+  color: var(--danger);
+}
+
 #orderReference[readonly] {
   background: var(--gray-100);
   color: var(--gray-700);

@@ -97,12 +97,15 @@ async function resetCheckoutForm() {
   document.getElementById('initialPayment').value = '0';
   document.getElementById('saleType').value = 'Contado';
   document.getElementById('paymentMethod').value = 'Efectivo';
+  document.getElementById('saleDiscount').value = '0';
   toggleCreditFields();
   await setNextOrderReferencePreview();
 }
 
 function getCheckoutData() {
-  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const discountPercent = Math.min(Math.max(Number(document.getElementById('saleDiscount').value || 0), 0), 100);
+  const total = Math.max(subtotal - (subtotal * discountPercent / 100), 0);
 
   const customerName = document.getElementById('customerName').value.trim();
   const customerPhone = document.getElementById('customerPhone').value.trim();
@@ -137,7 +140,8 @@ function getCheckoutData() {
     autoOrderReference: true,
     dueDate: saleType === 'Credito' ? dueDate : null,
     initialPayment: saleType === 'Credito' ? initialPayment : total,
-    notes
+    notes,
+    discountPercent
   };
 }
 
@@ -242,7 +246,10 @@ async function renderSalesHistory() {
         <td><span class="badge ${typeBadgeClass}">${sale.saleType === 'Credito' ? 'A crédito' : 'Al contado'}</span></td>
         <td>${escapeHtml(sale.paymentMethod || 'Efectivo')}</td>
         <td><span class="badge ${statusBadgeClass}">${escapeHtml(sale.paymentStatus)}</span></td>
-        <td><strong>${formatCurrency(sale.total || 0)}</strong></td>
+        <td>
+          <strong>${formatCurrency(sale.total || 0)}</strong>
+          ${sale.discountAmount > 0 ? `<div class="sale-meta">-${sale.discountPercent}% dcto.</div>` : ''}
+        </td>
         <td>${formatCurrency(sale.pendingBalance || 0)}</td>
         <td>
           ${hasPendingCredit
@@ -549,7 +556,26 @@ function renderCart() {
 async function openCheckoutModal() {
   if (cart.length === 0) return;
 
+  await resetCheckoutForm();
+  renderCheckoutSummary();
+
+  openModal('checkoutModal');
+}
+
+// Aplica un porcentaje de descuento predefinido y refresca el resumen
+function setDiscount(percent) {
+  document.getElementById('saleDiscount').value = percent;
+  renderCheckoutSummary();
+}
+
+// Recalcula y pinta el resumen de la venta (con descuento si aplica)
+function renderCheckoutSummary() {
   const summary = document.getElementById('checkoutSummary');
+  const subtotal = cart.reduce((s, i) => s + (i.price * i.quantity), 0);
+  const discountPercent = Math.min(Math.max(Number(document.getElementById('saleDiscount').value || 0), 0), 100);
+  const discountAmount = subtotal * discountPercent / 100;
+  const total = Math.max(subtotal - discountAmount, 0);
+
   summary.innerHTML = `
     <div class="summary-row">
       <span>Artículos:</span>
@@ -559,15 +585,21 @@ async function openCheckoutModal() {
       <span>Productos distintos:</span>
       <span>${cart.length}</span>
     </div>
+    ${discountAmount > 0 ? `
+      <div class="summary-row">
+        <span>Subtotal:</span>
+        <span>${formatCurrency(subtotal)}</span>
+      </div>
+      <div class="summary-row discount-row">
+        <span>Descuento (${discountPercent}%):</span>
+        <span>-${formatCurrency(discountAmount)}</span>
+      </div>
+    ` : ''}
     <div class="summary-row total">
       <span>TOTAL A COBRAR:</span>
-      <span>${formatCurrency(cart.reduce((s, i) => s + (i.price * i.quantity), 0))}</span>
+      <span>${formatCurrency(total)}</span>
     </div>
   `;
-
-  await resetCheckoutForm();
-
-  openModal('checkoutModal');
 }
 
 async function confirmSale() {
@@ -640,6 +672,16 @@ async function confirmSale() {
       <span>Artículos vendidos:</span>
       <span>${cart.reduce((s, i) => s + i.quantity, 0)}</span>
     </div>
+    ${sale.discountAmount > 0 ? `
+      <div class="summary-row">
+        <span>Subtotal:</span>
+        <span>${formatCurrency(sale.subtotal || 0)}</span>
+      </div>
+      <div class="summary-row discount-row">
+        <span>Descuento (${sale.discountPercent || 0}%):</span>
+        <span>-${formatCurrency(sale.discountAmount)}</span>
+      </div>
+    ` : ''}
     <div class="summary-row total">
       <span>TOTAL:</span>
       <span>${formatCurrency(sale.total)}</span>
