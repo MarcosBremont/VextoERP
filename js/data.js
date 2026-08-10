@@ -690,6 +690,9 @@ const DB = {
       : total;
     const pendingBalance = Math.max(total - paidAmount, 0);
 
+    const amountTendered = saleType === 'Credito' ? null : (Number(options.amountTendered || 0) || null);
+    const changeDue = amountTendered !== null ? Math.max(amountTendered - total, 0) : null;
+
     const autoOrderReference = options.autoOrderReference !== false;
     const resolvedOrderReference = autoOrderReference
       ? await this.getNextOrderReference()
@@ -710,6 +713,8 @@ const DB = {
       discountPercent,
       discountAmount,
       total,
+      amountTendered,
+      changeDue,
       paymentMethod: saleType === 'Credito' ? 'Crédito' : (options.paymentMethod || 'Efectivo'),
       saleType,
       customerName: (options.customerName || '').trim() || 'Cliente general',

@@ -1410,6 +1410,11 @@ h1, h2, h3, h4 {
   color: var(--danger);
 }
 
+.sale-summary .summary-row.change-row {
+  color: var(--success);
+  font-weight: 700;
+}
+
 #orderReference[readonly] {
   background: var(--gray-100);
   color: var(--gray-700);

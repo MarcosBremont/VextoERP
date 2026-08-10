@@ -66,6 +66,8 @@ function toggleCreditFields() {
   const dueDateInput = document.getElementById('creditDueDate');
   const initialPaymentGroup = document.getElementById('initialPaymentGroup');
   const initialPaymentInput = document.getElementById('initialPayment');
+  const amountTenderedGroup = document.getElementById('amountTenderedGroup');
+  const amountTenderedInput = document.getElementById('amountTendered');
 
   if (!saleType || !paymentMethod || !dueDateGroup || !dueDateInput || !initialPaymentGroup || !initialPaymentInput) {
     return;
@@ -75,11 +77,13 @@ function toggleCreditFields() {
 
   dueDateGroup.classList.toggle('hidden', !isCredit);
   initialPaymentGroup.classList.toggle('hidden', !isCredit);
+  amountTenderedGroup.classList.toggle('hidden', isCredit);
   dueDateInput.required = isCredit;
 
   if (isCredit) {
     paymentMethod.value = 'Crédito';
     paymentMethod.disabled = true;
+    amountTenderedInput.value = '';
   } else {
     if (paymentMethod.value === 'Crédito') {
       paymentMethod.value = 'Efectivo';
@@ -88,6 +92,8 @@ function toggleCreditFields() {
     dueDateInput.value = '';
     initialPaymentInput.value = '0';
   }
+
+  renderCheckoutSummary();
 }
 
 async function resetCheckoutForm() {
@@ -99,6 +105,7 @@ async function resetCheckoutForm() {
   document.getElementById('saleType').value = 'Contado';
   document.getElementById('paymentMethod').value = 'Efectivo';
   document.getElementById('saleDiscount').value = '0';
+  document.getElementById('amountTendered').value = '';
   toggleCreditFields();
   await setNextOrderReferencePreview();
 }
@@ -116,6 +123,7 @@ function getCheckoutData() {
   const dueDate = document.getElementById('creditDueDate').value;
   const notes = document.getElementById('saleNotes').value.trim();
   const initialPayment = Number(document.getElementById('initialPayment').value || 0);
+  const amountTendered = saleType === 'Credito' ? 0 : Number(document.getElementById('amountTendered').value || 0);
 
   if (saleType === 'Credito') {
     if (!dueDate) {
@@ -142,7 +150,8 @@ function getCheckoutData() {
     dueDate: saleType === 'Credito' ? dueDate : null,
     initialPayment: saleType === 'Credito' ? initialPayment : total,
     notes,
-    discountPercent
+    discountPercent,
+    amountTendered
   };
 }
 
@@ -606,6 +615,10 @@ function renderCheckoutSummary() {
   const discountAmount = subtotal * discountPercent / 100;
   const total = Math.max(subtotal - discountAmount, 0);
 
+  const isCredit = document.getElementById('saleType').value === 'Credito';
+  const amountTendered = Number(document.getElementById('amountTendered').value || 0);
+  const change = amountTendered - total;
+
   summary.innerHTML = `
     <div class="summary-row">
       <span>Artículos:</span>
@@ -629,6 +642,11 @@ function renderCheckoutSummary() {
       <span>TOTAL A COBRAR:</span>
       <span>${formatCurrency(total)}</span>
     </div>
+    ${!isCredit && amountTendered > 0 ? (
+      change >= 0
+        ? `<div class="summary-row change-row"><span>Cambio a devolver:</span><span>${formatCurrency(change)}</span></div>`
+        : `<div class="summary-row discount-row"><span>Falta por pagar:</span><span>${formatCurrency(-change)}</span></div>`
+    ) : ''}
   `;
 }
 
@@ -716,6 +734,16 @@ async function confirmSale() {
       <span>TOTAL:</span>
       <span>${formatCurrency(sale.total)}</span>
     </div>
+    ${sale.amountTendered ? `
+      <div class="summary-row">
+        <span>Paga con:</span>
+        <span>${formatCurrency(sale.amountTendered)}</span>
+      </div>
+      <div class="summary-row change-row">
+        <span>Cambio entregado:</span>
+        <span>${formatCurrency(sale.changeDue || 0)}</span>
+      </div>
+    ` : ''}
   `;
 
   // Cerrar modal de confirmación y abrir el de éxito
