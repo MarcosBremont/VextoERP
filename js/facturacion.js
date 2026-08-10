@@ -7,6 +7,7 @@
 let cart = [];
 let allProducts = [];
 let activePaymentSaleId = null;
+let deleteSaleId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   // Proteger ruta: si no hay sesión, redirigir al login
@@ -252,9 +253,12 @@ async function renderSalesHistory() {
         </td>
         <td>${formatCurrency(sale.pendingBalance || 0)}</td>
         <td>
-          ${hasPendingCredit
-            ? `<button class="btn btn-outline btn-sm sales-action-btn" onclick="openCreditPaymentModal('${sale.id}')">💵 Abonar</button>`
-            : '—'}
+          <div class="actions-cell">
+            ${hasPendingCredit
+              ? `<button class="btn btn-outline btn-sm sales-action-btn" onclick="openCreditPaymentModal('${sale.id}')">💵 Abonar</button>`
+              : ''}
+            <button class="btn-icon delete-btn" onclick="openDeleteSaleModal('${sale.id}')" title="Eliminar venta">🗑️</button>
+          </div>
         </td>
       </tr>
     `;
@@ -334,6 +338,32 @@ async function confirmCreditPayment() {
   showToast('✅ Abono registrado correctamente', 'success');
   await renderSalesHistory();
   await renderStats();
+}
+
+/* ============ ELIMINAR VENTA ============ */
+async function openDeleteSaleModal(saleId) {
+  deleteSaleId = saleId;
+  const sales = await DB.getSales();
+  const sale = sales.find(s => s.id === saleId);
+
+  document.getElementById('deleteSaleRef').textContent = sale ? `#${sale.number || '—'}` : 'esta venta';
+  openModal('deleteSaleModal');
+}
+
+async function confirmDeleteSale() {
+  if (!deleteSaleId) return;
+
+  const result = await DB.deleteSale(deleteSaleId);
+  deleteSaleId = null;
+  closeModal('deleteSaleModal');
+
+  if (!result.success) {
+    showToast(result.error || 'No se pudo eliminar la venta', 'error');
+    return;
+  }
+
+  showToast('🗑️ Venta eliminada y stock restaurado', 'success');
+  await loadBillingData();
 }
 
 /* ============ STATS CARDS ============ */

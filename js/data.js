@@ -850,6 +850,79 @@ const DB = {
     } catch (e) {
       return { success: false, error: e.message || 'No se pudo registrar el abono' };
     }
+  },
+
+  // Devolver unidades al stock de un producto (usado al eliminar una venta)
+  async increaseStock(productId, quantity) {
+    const ownerId = getCurrentOwnerId();
+    if (!ownerId) return;
+
+    if (isFirebaseAvailable()) {
+      try {
+        const productRef = db.collection(COLLECTIONS.PRODUCTS).doc(productId);
+        await db.runTransaction(async (transaction) => {
+          const doc = await transaction.get(productRef);
+          if (!doc.exists) return;
+          const product = doc.data();
+          if (product.ownerId !== ownerId || product.unlimitedStock) return;
+          transaction.update(productRef, {
+            stock: (product.stock || 0) + quantity,
+            updatedAt: new Date().toISOString()
+          });
+        });
+        return;
+      } catch (e) {
+        console.warn('Firebase bloqueado, usando localStorage:', e.message);
+      }
+    }
+
+    // Fallback: localStorage
+    const products = readData(STORAGE_KEYS.PRODUCTS, []);
+    const product = products.find(p => p.id === productId && p.ownerId === ownerId);
+    if (!product || product.unlimitedStock) return;
+
+    product.stock = (product.stock || 0) + quantity;
+    product.updatedAt = new Date().toISOString();
+    saveData(STORAGE_KEYS.PRODUCTS, products);
+  },
+
+  // Eliminar una venta y devolver el stock de los productos vendidos
+  async deleteSale(id) {
+    const ownerId = getCurrentOwnerId();
+    if (!ownerId) return { success: false, error: 'No hay una sesión activa' };
+
+    if (isFirebaseAvailable()) {
+      try {
+        const saleRef = db.collection(COLLECTIONS.SALES).doc(id);
+        const doc = await saleRef.get();
+        if (!doc.exists || doc.data().ownerId !== ownerId) {
+          return { success: false, error: 'Venta no encontrada' };
+        }
+
+        const sale = doc.data();
+        for (const item of (sale.items || [])) {
+          await this.increaseStock(item.productId, item.quantity);
+        }
+
+        await saleRef.delete();
+        return { success: true };
+      } catch (e) {
+        console.warn('Firebase bloqueado, usando localStorage:', e.message);
+      }
+    }
+
+    // Fallback: localStorage
+    const sales = readData(STORAGE_KEYS.SALES, []);
+    const sale = sales.find(s => s.id === id && s.ownerId === ownerId);
+    if (!sale) return { success: false, error: 'Venta no encontrada' };
+
+    for (const item of (sale.items || [])) {
+      await this.increaseStock(item.productId, item.quantity);
+    }
+
+    const filtered = sales.filter(s => !(s.id === id && s.ownerId === ownerId));
+    saveData(STORAGE_KEYS.SALES, filtered);
+    return { success: true };
   }
 };
 

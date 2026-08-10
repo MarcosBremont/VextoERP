@@ -301,6 +301,29 @@
     </div>
   </div>
 
+  <!-- ============ MODAL: ELIMINAR VENTA ============ -->
+  <div class="modal-overlay" id="deleteSaleModal">
+    <div class="modal" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3>🗑️ Eliminar Venta</h3>
+        <button class="modal-close" onclick="closeModal('deleteSaleModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="text-align:center; color:var(--gray-600); margin-bottom: 8px;">
+          ¿Estás seguro de que deseas eliminar la venta
+          <strong id="deleteSaleRef" style="color:var(--gray-900);">esta venta</strong>?
+        </p>
+        <p style="text-align:center; font-size:0.85rem; color:var(--gray-400);">
+          Esta acción no se puede deshacer y devolverá al inventario el stock de los productos vendidos.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('deleteSaleModal')">Cancelar</button>
+        <button class="btn btn-danger" onclick="confirmDeleteSale()">🗑️ Sí, Eliminar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
