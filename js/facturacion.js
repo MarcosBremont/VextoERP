@@ -96,6 +96,17 @@ function toggleCreditFields() {
   renderCheckoutSummary();
 }
 
+function toggleDeliveryFields() {
+  const enabled = document.getElementById('deliveryEnabled').checked;
+  const group = document.getElementById('deliveryFieldsGroup');
+  group.classList.toggle('hidden', !enabled);
+  if (!enabled) {
+    document.getElementById('deliveryCost').value = '';
+    document.getElementById('deliveryDestination').value = '';
+  }
+  renderCheckoutSummary();
+}
+
 async function resetCheckoutForm() {
   document.getElementById('customerName').value = '';
   document.getElementById('customerPhone').value = '';
@@ -106,6 +117,10 @@ async function resetCheckoutForm() {
   document.getElementById('paymentMethod').value = 'Efectivo';
   document.getElementById('saleDiscount').value = '0';
   document.getElementById('amountTendered').value = '';
+  document.getElementById('deliveryEnabled').checked = false;
+  document.getElementById('deliveryCost').value = '';
+  document.getElementById('deliveryDestination').value = '';
+  document.getElementById('deliveryFieldsGroup').classList.add('hidden');
   toggleCreditFields();
   await setNextOrderReferencePreview();
 }
@@ -113,7 +128,10 @@ async function resetCheckoutForm() {
 function getCheckoutData() {
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const discountPercent = Math.min(Math.max(Number(document.getElementById('saleDiscount').value || 0), 0), 100);
-  const total = Math.max(subtotal - (subtotal * discountPercent / 100), 0);
+  const deliveryEnabled = document.getElementById('deliveryEnabled').checked;
+  const deliveryCost = deliveryEnabled ? Math.max(Number(document.getElementById('deliveryCost').value || 0), 0) : 0;
+  const deliveryDestination = deliveryEnabled ? document.getElementById('deliveryDestination').value.trim() : '';
+  const total = Math.max(subtotal - (subtotal * discountPercent / 100), 0) + deliveryCost;
 
   const customerName = document.getElementById('customerName').value.trim();
   const customerPhone = document.getElementById('customerPhone').value.trim();
@@ -151,7 +169,10 @@ function getCheckoutData() {
     initialPayment: saleType === 'Credito' ? initialPayment : total,
     notes,
     discountPercent,
-    amountTendered
+    amountTendered,
+    deliveryEnabled,
+    deliveryCost,
+    deliveryDestination
   };
 }
 
@@ -259,6 +280,7 @@ async function renderSalesHistory() {
         <td>
           <strong>${formatCurrency(sale.total || 0)}</strong>
           ${sale.discountAmount > 0 ? `<div class="sale-meta">-${sale.discountPercent}% dcto.</div>` : ''}
+          ${sale.deliveryEnabled && sale.deliveryCost > 0 ? `<div class="sale-meta">🚚 +${formatCurrency(sale.deliveryCost)}${sale.deliveryDestination ? ' · ' + escapeHtml(sale.deliveryDestination) : ''}</div>` : ''}
         </td>
         <td>${formatCurrency(sale.pendingBalance || 0)}</td>
         <td>
@@ -459,11 +481,14 @@ function renderProductsBilling() {
     const inCart = cart.find(item => item.productId === product.id);
     const selected = inCart ? 'selected' : '';
     const disabled = outOfStock ? 'disabled' : '';
+    const iconContent = product.photo
+      ? `<img src="${product.photo}" alt="${escapeHtml(product.name)}">`
+      : '📦';
 
     return `
       <div class="billing-product-card ${selected} ${disabled}"
            onclick="addToCart('${product.id}')">
-        <div class="bp-icon">📦</div>
+        <div class="bp-icon">${iconContent}</div>
         <div class="bp-name">${escapeHtml(product.name)}</div>
         <div class="bp-price">${formatCurrency(product.price)}</div>
         <div class="bp-stock">
@@ -613,7 +638,9 @@ function renderCheckoutSummary() {
   const subtotal = cart.reduce((s, i) => s + (i.price * i.quantity), 0);
   const discountPercent = Math.min(Math.max(Number(document.getElementById('saleDiscount').value || 0), 0), 100);
   const discountAmount = subtotal * discountPercent / 100;
-  const total = Math.max(subtotal - discountAmount, 0);
+  const deliveryEnabled = document.getElementById('deliveryEnabled').checked;
+  const deliveryCost = deliveryEnabled ? Math.max(Number(document.getElementById('deliveryCost').value || 0), 0) : 0;
+  const total = Math.max(subtotal - discountAmount, 0) + deliveryCost;
 
   const isCredit = document.getElementById('saleType').value === 'Credito';
   const amountTendered = Number(document.getElementById('amountTendered').value || 0);
@@ -636,6 +663,12 @@ function renderCheckoutSummary() {
       <div class="summary-row discount-row">
         <span>Descuento (${discountPercent}%):</span>
         <span>-${formatCurrency(discountAmount)}</span>
+      </div>
+    ` : ''}
+    ${deliveryCost > 0 ? `
+      <div class="summary-row">
+        <span>🚚 Delivery:</span>
+        <span>+${formatCurrency(deliveryCost)}</span>
       </div>
     ` : ''}
     <div class="summary-row total">
@@ -728,6 +761,12 @@ async function confirmSale() {
       <div class="summary-row discount-row">
         <span>Descuento (${sale.discountPercent || 0}%):</span>
         <span>-${formatCurrency(sale.discountAmount)}</span>
+      </div>
+    ` : ''}
+    ${sale.deliveryEnabled && sale.deliveryCost > 0 ? `
+      <div class="summary-row">
+        <span>🚚 Delivery${sale.deliveryDestination ? ' (' + escapeHtml(sale.deliveryDestination) + ')' : ''}:</span>
+        <span>+${formatCurrency(sale.deliveryCost)}</span>
       </div>
     ` : ''}
     <div class="summary-row total">

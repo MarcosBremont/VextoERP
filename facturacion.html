@@ -242,6 +242,23 @@
               </div>
             </div>
             <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="deliveryEnabled" onchange="toggleDeliveryFields()">
+                <span>🚚 Incluye delivery / envío</span>
+              </label>
+              <div class="hint">Actívalo si el pedido se envía a otro lugar y el delivery tiene un costo adicional.</div>
+            </div>
+            <div class="form-grid-2 hidden" id="deliveryFieldsGroup">
+              <div class="form-group">
+                <label for="deliveryCost">Costo del delivery (RD$)</label>
+                <input type="number" id="deliveryCost" min="0" step="0.01" placeholder="0.00" oninput="renderCheckoutSummary()">
+              </div>
+              <div class="form-group">
+                <label for="deliveryDestination">Destino / Notas del envío</label>
+                <input type="text" id="deliveryDestination" placeholder="Ej: Envío a Santiago">
+              </div>
+            </div>
+            <div class="form-group">
               <label for="saleNotes">Notas / Anotaciones</label>
               <textarea id="saleNotes" rows="3" placeholder="Detalles adicionales de la venta..."></textarea>
             </div>

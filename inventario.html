@@ -136,6 +136,22 @@
           </div>
 
           <div class="form-group">
+            <label>Foto del producto</label>
+            <div class="photo-upload">
+              <div class="photo-preview" id="productPhotoPreview">
+                <span id="productPhotoPlaceholder">📦</span>
+                <img id="productPhotoImg" class="hidden" alt="Foto del producto">
+              </div>
+              <div class="photo-upload-actions">
+                <input type="file" id="productPhotoInput" accept="image/*" class="hidden">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('productPhotoInput').click()">📷 Elegir foto</button>
+                <button type="button" class="btn btn-secondary btn-sm hidden" id="removePhotoBtn" onclick="removeProductPhoto()">✕ Quitar</button>
+              </div>
+            </div>
+            <div class="hint">Opcional. La imagen se comprimirá automáticamente antes de guardarse.</div>
+          </div>
+
+          <div class="form-group">
             <label for="productCategory">Categoría *</label>
             <select id="productCategory" required>
               <option value="">Selecciona una categoría</option>

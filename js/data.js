@@ -318,6 +318,7 @@ const DB = {
       category: productData.category.trim(),
       price: parseFloat(productData.price) || 0,
       cost: productData.cost ? parseFloat(productData.cost) : null,
+      photo: productData.photo || null,
       ...normalizeStockFields(productData),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -350,6 +351,7 @@ const DB = {
       category: productData.category.trim(),
       price: parseFloat(productData.price) || 0,
       cost: productData.cost ? parseFloat(productData.cost) : null,
+      photo: productData.photo || null,
       ...normalizeStockFields(productData),
       updatedAt: new Date().toISOString()
     };
@@ -680,7 +682,10 @@ const DB = {
     const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const discountPercent = Math.min(Math.max(Number(options.discountPercent || 0), 0), 100);
     const discountAmount = subtotal * discountPercent / 100;
-    const total = Math.max(subtotal - discountAmount, 0);
+    const deliveryEnabled = !!options.deliveryEnabled;
+    const deliveryCost = deliveryEnabled ? Math.max(Number(options.deliveryCost || 0), 0) : 0;
+    const deliveryDestination = deliveryEnabled ? (options.deliveryDestination || '').trim() : '';
+    const total = Math.max(subtotal - discountAmount, 0) + deliveryCost;
     const session = this.getSession();
 
     const saleType = options.saleType === 'Credito' ? 'Credito' : 'Contado';
@@ -712,6 +717,9 @@ const DB = {
       subtotal,
       discountPercent,
       discountAmount,
+      deliveryEnabled,
+      deliveryCost,
+      deliveryDestination,
       total,
       amountTendered,
       changeDue,

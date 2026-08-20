@@ -24,7 +24,86 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Alternar campos de stock según el checkbox "sin stock físico"
   document.getElementById('productUnlimitedStock').addEventListener('change', toggleStockFields);
+
+  // Foto del producto
+  document.getElementById('productPhotoInput').addEventListener('change', handleProductPhotoSelected);
 });
+
+/* ============ FOTO DEL PRODUCTO ============ */
+let currentProductPhoto = null; // dataURL (base64) de la foto actual del formulario
+
+// Redimensiona y comprime una imagen a JPEG para que ocupe poco espacio
+function resizeImageFile(file, maxSize = 500, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > height && width > maxSize) {
+          height = Math.round(height * (maxSize / width));
+          width = maxSize;
+        } else if (height > maxSize) {
+          width = Math.round(width * (maxSize / height));
+          height = maxSize;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('No se pudo leer la imagen'));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleProductPhotoSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (!file.type.startsWith('image/')) {
+    showToast('Selecciona un archivo de imagen válido', 'error');
+    e.target.value = '';
+    return;
+  }
+
+  try {
+    currentProductPhoto = await resizeImageFile(file);
+    renderProductPhotoPreview();
+  } catch (err) {
+    showToast('No se pudo procesar la imagen', 'error');
+  } finally {
+    e.target.value = '';
+  }
+}
+
+function removeProductPhoto() {
+  currentProductPhoto = null;
+  renderProductPhotoPreview();
+}
+
+function renderProductPhotoPreview() {
+  const img = document.getElementById('productPhotoImg');
+  const placeholder = document.getElementById('productPhotoPlaceholder');
+  const removeBtn = document.getElementById('removePhotoBtn');
+
+  if (currentProductPhoto) {
+    img.src = currentProductPhoto;
+    img.classList.remove('hidden');
+    placeholder.classList.add('hidden');
+    removeBtn.classList.remove('hidden');
+  } else {
+    img.src = '';
+    img.classList.add('hidden');
+    placeholder.classList.remove('hidden');
+    removeBtn.classList.add('hidden');
+  }
+}
 
 // Mostrar/ocultar y (des)requerir los campos de stock del formulario
 function toggleStockFields() {
@@ -117,12 +196,15 @@ async function renderProductsTable() {
     const status = DB.getStockStatus(product.stock, product.minStock, product.unlimitedStock);
     const initials = getInitials(product.name);
     const badgeClass = status.cls === 'badge-danger' ? 'gray' : status.cls === 'badge-warning' ? 'amber' : 'green';
+    const badgeContent = product.photo
+      ? `<img src="${product.photo}" alt="${escapeHtml(product.name)}">`
+      : initials;
 
     return `
       <tr>
         <td>
           <div class="product-name-cell">
-            <div class="product-badge ${badgeClass}">${initials}</div>
+            <div class="product-badge ${badgeClass}">${badgeContent}</div>
             <div>
               <div class="product-main">${escapeHtml(product.name)}</div>
               ${product.description ? `<div class="product-category">${escapeHtml(product.description)}</div>` : ''}
@@ -160,6 +242,7 @@ async function openProductModal(productId = null) {
 
   form.reset();
   document.getElementById('productId').value = '';
+  currentProductPhoto = null;
   await renderCategoryOptions();
 
   if (productId) {
@@ -176,10 +259,12 @@ async function openProductModal(productId = null) {
     document.getElementById('productUnlimitedStock').checked = !!product.unlimitedStock;
     document.getElementById('productStock').value = product.unlimitedStock ? '' : product.stock;
     document.getElementById('productMinStock').value = product.unlimitedStock ? 0 : (product.minStock || 0);
+    currentProductPhoto = product.photo || null;
   } else {
     title.textContent = '➕ Nuevo Producto';
   }
 
+  renderProductPhotoPreview();
   toggleStockFields();
   openModal('productModal');
   setTimeout(() => document.getElementById('productName').focus(), 100);
@@ -221,7 +306,7 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
     return;
   }
 
-  const productData = { name, description, category, price, cost, unlimitedStock, stock, minStock: minStock || 0 };
+  const productData = { name, description, category, price, cost, unlimitedStock, stock, minStock: minStock || 0, photo: currentProductPhoto };
 
   if (productId) {
     await DB.updateProduct(productId, productData);
