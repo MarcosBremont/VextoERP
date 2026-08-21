@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VextoERP | Historial de Ventas</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="shortcut icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="logo-badge">
+          <img src="vextologo1.png" alt="VextoERP">
+        </div>
+        <div class="sidebar-brand-text">
+          <span class="brand-name">VextoERP</span>
+          <span class="brand-sub">Facturación & Inventario</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section">Principal</div>
+        <a href="facturacion.html" class="nav-item">
+          <span class="nav-icon">🧾</span>
+          <span>Facturación</span>
+        </a>
+        <a href="historial.html" class="nav-item active">
+          <span class="nav-icon">📋</span>
+          <span>Historial</span>
+        </a>
+        <a href="inventario.html" class="nav-item">
+          <span class="nav-icon">📦</span>
+          <span>Inventario</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar">A</div>
+          <div class="user-details">
+            <span class="user-name">—</span>
+            <span class="user-role">—</span>
+          </div>
+        </div>
+        <button class="logout-btn" onclick="logout()">
+          <span>🚪</span>
+          <span>Cerrar Sesión</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ============ CONTENIDO PRINCIPAL ============ -->
+    <main class="main-content">
+      <header class="topbar">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button class="menu-toggle" aria-label="Abrir menú">☰</button>
+          <h2>📋 Historial de Ventas</h2>
+        </div>
+        <div class="topbar-right">
+          <span class="topbar-date" id="todayDate"></span>
+        </div>
+      </header>
+
+      <div class="content-area">
+        <!-- Stats Cards -->
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <div class="card sales-history-card">
+          <div class="card-header">
+            <h3>📋 Historial de Ventas</h3>
+            <div class="toolbar">
+              <input type="text" class="search-input" id="salesSearchInput" placeholder="🔍 Buscar por cliente, producto o comprobante...">
+              <select id="salesTypeFilter" class="sales-filter-select">
+                <option value="">Tipo: Todos</option>
+                <option value="Contado">Al contado</option>
+                <option value="Credito">A crédito</option>
+              </select>
+              <select id="salesStatusFilter" class="sales-filter-select">
+                <option value="">Estado: Todos</option>
+                <option value="Pagada">Pagada</option>
+                <option value="Pendiente">Pendiente</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card-body">
+            <div class="table-responsive" id="salesHistoryTableWrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Comprobante</th>
+                    <th>Fecha</th>
+                    <th>Cliente</th>
+                    <th>Productos</th>
+                    <th>Tipo</th>
+                    <th>Pago</th>
+                    <th>Estado</th>
+                    <th>Total</th>
+                    <th>Saldo</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="salesHistoryBody"></tbody>
+              </table>
+            </div>
+
+            <div class="empty-state hidden" id="salesHistoryEmptyState">
+              <div class="empty-icon">🧾</div>
+              <h3>Sin ventas para mostrar</h3>
+              <p>Ajusta los filtros o registra una nueva venta</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ============ MODAL: REGISTRAR ABONO ============ -->
+  <div class="modal-overlay" id="creditPaymentModal">
+    <div class="modal" style="max-width: 460px;">
+      <div class="modal-header">
+        <h3>💵 Registrar Abono</h3>
+        <button class="modal-close" onclick="closeCreditPaymentModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="sale-summary" id="creditPaymentSummary"></div>
+
+        <div class="form-group">
+          <label for="paymentAmount">Monto a abonar (RD$)</label>
+          <input type="number" id="paymentAmount" min="0.01" step="0.01" placeholder="Ej: 500.00">
+        </div>
+
+        <div class="form-group">
+          <label for="paymentNote">Nota del abono</label>
+          <textarea id="paymentNote" rows="2" placeholder="Ej: Pago parcial en efectivo"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeCreditPaymentModal()">Cancelar</button>
+        <button class="btn btn-success" onclick="confirmCreditPayment()">✅ Guardar Abono</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: ELIMINAR VENTA ============ -->
+  <div class="modal-overlay" id="deleteSaleModal">
+    <div class="modal" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3>🗑️ Eliminar Venta</h3>
+        <button class="modal-close" onclick="closeModal('deleteSaleModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="text-align:center; color:var(--gray-600); margin-bottom: 8px;">
+          ¿Estás seguro de que deseas eliminar la venta
+          <strong id="deleteSaleRef" style="color:var(--gray-900);">esta venta</strong>?
+        </p>
+        <p style="text-align:center; font-size:0.85rem; color:var(--gray-400);">
+          Esta acción no se puede deshacer y devolverá al inventario el stock de los productos vendidos.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('deleteSaleModal')">Cancelar</button>
+        <button class="btn btn-danger" onclick="confirmDeleteSale()">🗑️ Sí, Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/historial.js"></script>
+</body>
+</html>
