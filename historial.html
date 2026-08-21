@@ -85,18 +85,20 @@
         <div class="card sales-history-card">
           <div class="card-header">
             <h3>📋 Historial de Ventas</h3>
-            <div class="toolbar">
+            <div class="toolbar sales-toolbar">
               <input type="text" class="search-input" id="salesSearchInput" placeholder="🔍 Buscar por cliente, producto o comprobante...">
-              <select id="salesTypeFilter" class="sales-filter-select">
-                <option value="">Tipo: Todos</option>
-                <option value="Contado">Al contado</option>
-                <option value="Credito">A crédito</option>
-              </select>
-              <select id="salesStatusFilter" class="sales-filter-select">
-                <option value="">Estado: Todos</option>
-                <option value="Pagada">Pagada</option>
-                <option value="Pendiente">Pendiente</option>
-              </select>
+              <div class="filter-group">
+                <select id="salesTypeFilter" class="sales-filter-select">
+                  <option value="">Tipo: Todos</option>
+                  <option value="Contado">Al contado</option>
+                  <option value="Credito">A crédito</option>
+                </select>
+                <select id="salesStatusFilter" class="sales-filter-select">
+                  <option value="">Estado: Todos</option>
+                  <option value="Pagada">Pagada</option>
+                  <option value="Pendiente">Pendiente</option>
+                </select>
+              </div>
             </div>
           </div>
 
