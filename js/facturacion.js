@@ -524,11 +524,11 @@ function renderCheckoutSummary() {
       <span>Productos distintos:</span>
       <span>${cart.length}</span>
     </div>
+    <div class="summary-row">
+      <span>Subtotal productos:</span>
+      <span>${formatCurrency(subtotal)}</span>
+    </div>
     ${discountAmount > 0 ? `
-      <div class="summary-row">
-        <span>Subtotal:</span>
-        <span>${formatCurrency(subtotal)}</span>
-      </div>
       <div class="summary-row discount-row">
         <span>Descuento (${discountPercent}%):</span>
         <span>-${formatCurrency(discountAmount)}</span>
@@ -627,11 +627,11 @@ async function confirmSale() {
       <span>Artículos vendidos:</span>
       <span>${cart.reduce((s, i) => s + i.quantity, 0)}</span>
     </div>
+    <div class="summary-row">
+      <span>Subtotal productos:</span>
+      <span>${formatCurrency(sale.subtotal || 0)}</span>
+    </div>
     ${sale.discountAmount > 0 ? `
-      <div class="summary-row">
-        <span>Subtotal:</span>
-        <span>${formatCurrency(sale.subtotal || 0)}</span>
-      </div>
       <div class="summary-row discount-row">
         <span>Descuento (${sale.discountPercent || 0}%):</span>
         <span>-${formatCurrency(sale.discountAmount)}</span>
