@@ -73,6 +73,9 @@
               <input type="text" class="search-input" id="searchProductInput" placeholder="🔍 Buscar producto...">
             </div>
             <div class="card-body">
+              <div class="category-pills" id="billingCategoryPills">
+                <!-- Píldoras generadas por JS -->
+              </div>
               <div class="product-list-billing" id="productListBilling">
                 <!-- Tarjetas generadas por JS -->
               </div>
@@ -87,8 +90,11 @@
           <!-- Columna derecha: Carrito -->
           <div class="card cart-card">
             <div class="cart-header">
-              <span style="font-size:1.2rem;">🧺</span>
-              <span>Carrito de Venta</span>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:1.2rem;">🧺</span>
+                <span>Carrito de Venta</span>
+              </div>
+              <button type="button" class="cart-reset-btn" onclick="clearCart()">🗑️ Vaciar</button>
             </div>
 
             <div class="cart-body" id="cartBody">
@@ -108,7 +114,7 @@
                 <span>Total:</span>
                 <span id="cartTotal">RD$ 0.00</span>
               </div>
-              <button class="btn btn-success cart-checkout-btn" id="checkoutBtn" onclick="openCheckoutModal()" disabled>
+              <button class="btn btn-primary cart-checkout-btn" id="checkoutBtn" onclick="openCheckoutModal()" disabled>
                 💳 Cobrar Venta
               </button>
             </div>
@@ -216,15 +222,15 @@
                   <option value="Credito">🕒 A crédito</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label for="paymentMethod">Método de pago</label>
-                <select id="paymentMethod">
-                  <option value="Efectivo">💵 Efectivo</option>
-                  <option value="Tarjeta">💳 Tarjeta</option>
-                  <option value="Transferencia">🏦 Transferencia</option>
-                  <option value="QR">📱 QR</option>
-                  <option value="Crédito">🕒 Crédito</option>
-                </select>
+              <div class="form-group" style="grid-column: 1 / -1;">
+                <label>Método de pago</label>
+                <input type="hidden" id="paymentMethod" value="Efectivo">
+                <div class="payment-method-group" id="paymentMethodGroup">
+                  <button type="button" class="payment-pill active" data-method="Efectivo" onclick="setPaymentMethod('Efectivo')">💵 Efectivo</button>
+                  <button type="button" class="payment-pill" data-method="Tarjeta" onclick="setPaymentMethod('Tarjeta')">💳 Tarjeta</button>
+                  <button type="button" class="payment-pill" data-method="Transferencia" onclick="setPaymentMethod('Transferencia')">🏦 Transferencia</button>
+                  <button type="button" class="payment-pill" data-method="QR" onclick="setPaymentMethod('QR')">📱 QR</button>
+                </div>
               </div>
               <div class="form-group">
                 <label for="orderReference">Referencia / Orden</label>
@@ -267,7 +273,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal('checkoutModal')">Cancelar</button>
-        <button class="btn btn-success" onclick="confirmSale()">✅ Confirmar y Cobrar</button>
+        <button class="btn btn-primary" id="confirmSaleBtn" onclick="confirmSale()">✅ Confirmar y Cobrar</button>
       </div>
     </div>
   </div>

@@ -6,8 +6,15 @@
 // Estado del carrito
 let cart = [];
 let allProducts = [];
+let allCategories = [];
+let activeCategoryFilter = '';
 let activePaymentSaleId = null;
 let deleteSaleId = null;
+
+// Escapa un texto para insertarlo de forma segura dentro de comillas simples de un atributo onclick
+function escapeJsString(str) {
+  return String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   // Proteger ruta: si no hay sesión, redirigir al login
@@ -59,9 +66,18 @@ async function setNextOrderReferencePreview() {
   }
 }
 
+// Selecciona el método de pago activo (píldoras) y actualiza el input oculto
+function setPaymentMethod(method) {
+  document.getElementById('paymentMethod').value = method;
+  document.querySelectorAll('.payment-pill').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.method === method);
+  });
+}
+
 function toggleCreditFields() {
   const saleType = document.getElementById('saleType');
   const paymentMethod = document.getElementById('paymentMethod');
+  const paymentMethodGroup = document.getElementById('paymentMethodGroup');
   const dueDateGroup = document.getElementById('creditDueDateGroup');
   const dueDateInput = document.getElementById('creditDueDate');
   const initialPaymentGroup = document.getElementById('initialPaymentGroup');
@@ -79,16 +95,15 @@ function toggleCreditFields() {
   initialPaymentGroup.classList.toggle('hidden', !isCredit);
   amountTenderedGroup.classList.toggle('hidden', isCredit);
   dueDateInput.required = isCredit;
+  paymentMethodGroup.classList.toggle('disabled', isCredit);
 
   if (isCredit) {
-    paymentMethod.value = 'Crédito';
-    paymentMethod.disabled = true;
+    setPaymentMethod('Crédito');
     amountTenderedInput.value = '';
   } else {
     if (paymentMethod.value === 'Crédito') {
-      paymentMethod.value = 'Efectivo';
+      setPaymentMethod('Efectivo');
     }
-    paymentMethod.disabled = false;
     dueDateInput.value = '';
     initialPaymentInput.value = '0';
   }
@@ -114,7 +129,7 @@ async function resetCheckoutForm() {
   document.getElementById('creditDueDate').value = '';
   document.getElementById('initialPayment').value = '0';
   document.getElementById('saleType').value = 'Contado';
-  document.getElementById('paymentMethod').value = 'Efectivo';
+  setPaymentMethod('Efectivo');
   document.getElementById('saleDiscount').value = '0';
   document.getElementById('amountTendered').value = '';
   document.getElementById('deliveryEnabled').checked = false;
@@ -180,7 +195,9 @@ function getCheckoutData() {
 async function loadBillingData() {
   try {
     allProducts = await DB.getProducts();
+    allCategories = await DB.getCategories();
     renderStats();
+    renderCategoryPills();
     renderProductsBilling();
     await setNextOrderReferencePreview();
     await renderSalesHistory();
@@ -188,6 +205,25 @@ async function loadBillingData() {
     console.error('Error cargando datos:', e);
     showToast('Error al cargar datos desde Firebase', 'error');
   }
+}
+
+/* ============ FILTRO POR CATEGORÍA ============ */
+function renderCategoryPills() {
+  const container = document.getElementById('billingCategoryPills');
+  if (!container) return;
+
+  const categoriesInUse = allCategories.filter(c => allProducts.some(p => p.category === c.name));
+  const pills = [{ name: '', label: 'Todos' }, ...categoriesInUse.map(c => ({ name: c.name, label: c.name }))];
+
+  container.innerHTML = pills.map(p => `
+    <button type="button" class="category-pill ${activeCategoryFilter === p.name ? 'active' : ''}" onclick="setCategoryFilter('${escapeJsString(p.name)}')">${escapeHtml(p.label)}</button>
+  `).join('');
+}
+
+function setCategoryFilter(name) {
+  activeCategoryFilter = name;
+  renderCategoryPills();
+  renderProductsBilling();
 }
 
 async function renderSalesHistory() {
@@ -451,6 +487,11 @@ function renderProductsBilling() {
 
   let products = [...allProducts];
 
+  // Filtrar por categoría activa
+  if (activeCategoryFilter) {
+    products = products.filter(p => p.category === activeCategoryFilter);
+  }
+
   // Filtrar por búsqueda
   if (searchTerm) {
     products = products.filter(p =>
@@ -590,21 +631,33 @@ function renderCart() {
     cartEmpty.classList.add('hidden');
     cartItems.classList.remove('hidden');
 
-    cartItems.innerHTML = cart.map(item => `
-      <div class="cart-item">
-        <div class="cart-item-info">
-          <div class="cart-item-name">${escapeHtml(item.name)}</div>
-          <div class="cart-item-price">${formatCurrency(item.price)} / ud.</div>
+    cartItems.innerHTML = cart.map(item => {
+      const product = allProducts.find(p => p.id === item.productId);
+      const imgContent = product && product.photo
+        ? `<img src="${product.photo}" alt="${escapeHtml(item.name)}">`
+        : '📦';
+
+      return `
+        <div class="cart-item">
+          <div class="cart-item-img">${imgContent}</div>
+          <div class="cart-item-main">
+            <div class="cart-item-top">
+              <span class="cart-item-name">${escapeHtml(item.name)}</span>
+              <button class="cart-remove" onclick="removeFromCart('${item.productId}')" title="Quitar">✕</button>
+            </div>
+            <div class="cart-item-price">${formatCurrency(item.price)} / ud.</div>
+            <div class="cart-item-bottom">
+              <div class="cart-qty-control">
+                <button onclick="decreaseQuantity('${item.productId}')" title="Disminuir">−</button>
+                <span class="cart-qty">${item.quantity}</span>
+                <button onclick="increaseQuantity('${item.productId}')" title="Aumentar">+</button>
+              </div>
+              <div class="cart-item-subtotal">${formatCurrency(item.price * item.quantity)}</div>
+            </div>
+          </div>
         </div>
-        <div class="cart-qty-control">
-          <button onclick="decreaseQuantity('${item.productId}')" title="Disminuir">−</button>
-          <span class="cart-qty">${item.quantity}</span>
-          <button onclick="increaseQuantity('${item.productId}')" title="Aumentar">+</button>
-        </div>
-        <div class="cart-item-subtotal">${formatCurrency(item.price * item.quantity)}</div>
-        <button class="cart-remove" onclick="removeFromCart('${item.productId}')" title="Quitar">✕</button>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
   // Totales
@@ -681,6 +734,11 @@ function renderCheckoutSummary() {
         : `<div class="summary-row discount-row"><span>Falta por pagar:</span><span>${formatCurrency(-change)}</span></div>`
     ) : ''}
   `;
+
+  const confirmBtn = document.getElementById('confirmSaleBtn');
+  if (confirmBtn) {
+    confirmBtn.textContent = `✅ Confirmar y Cobrar — ${formatCurrency(total)}`;
+  }
 }
 
 async function confirmSale() {

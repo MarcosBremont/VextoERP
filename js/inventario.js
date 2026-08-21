@@ -51,7 +51,12 @@ function resizeImageFile(file, maxSize = 500, quality = 0.72) {
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        const ctx = canvas.getContext('2d');
+        // Fondo blanco: el JPEG no soporta transparencia y las imágenes
+        // con fondo transparente (PNG) se verían negras sin esto.
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
         resolve(canvas.toDataURL('image/jpeg', quality));
       };
       img.onerror = () => reject(new Error('No se pudo leer la imagen'));
