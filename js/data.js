@@ -10,6 +10,7 @@ const STORAGE_KEYS = {
   PRODUCTS: 'vexto_products',
   CATEGORIES: 'vexto_categories',
   SALES: 'vexto_sales',
+  CUSTOMERS: 'vexto_customers',
   SESSION: 'vexto_session',
   SALE_NUMBER: 'vexto_sale_number',
   ORDER_REFERENCE: 'vexto_order_reference'
@@ -21,6 +22,7 @@ const COLLECTIONS = {
   PRODUCTS: 'products',
   CATEGORIES: 'categories',
   SALES: 'sales',
+  CUSTOMERS: 'customers',
   COUNTERS: 'counters'
 };
 
@@ -63,6 +65,12 @@ function formatDateTime(date) {
 // Generar ID único
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+}
+
+// Deja solo los dígitos de un teléfono, para poder comparar/vincular
+// clientes sin importar el formato en que se haya escrito (espacios, guiones, etc.)
+function normalizePhoneDigits(phone) {
+  return String(phone || '').replace(/\D/g, '');
 }
 
 // Leer datos del localStorage con validación
@@ -564,6 +572,140 @@ const DB = {
     }
   },
 
+  /* ============ CLIENTES ============ */
+  async getCustomers() {
+    const ownerId = getCurrentOwnerId();
+    if (!ownerId) return [];
+
+    if (isFirebaseAvailable()) {
+      try {
+        const snapshot = await db.collection(COLLECTIONS.CUSTOMERS).get();
+        return snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(customer => customer.ownerId === ownerId)
+          .sort((a, b) => a.name.localeCompare(b.name));
+      } catch (e) {
+        console.warn('Firebase bloqueado, usando localStorage:', e.message);
+      }
+    }
+    return filterOwnedRecords(readData(STORAGE_KEYS.CUSTOMERS, []))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  },
+
+  async addCustomer(customerData) {
+    const ownerId = getCurrentOwnerId();
+    if (!ownerId) throw new Error('No hay una sesión activa');
+
+    const name = (customerData.name || '').trim();
+    if (!name) throw new Error('El nombre del cliente es obligatorio');
+
+    const newCustomer = {
+      id: generateId(),
+      ownerId,
+      name,
+      phone: (customerData.phone || '').trim(),
+      phoneDigits: normalizePhoneDigits(customerData.phone),
+      email: (customerData.email || '').trim(),
+      address: (customerData.address || '').trim(),
+      notes: (customerData.notes || '').trim(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    if (isFirebaseAvailable()) {
+      try {
+        const { id, ...data } = newCustomer;
+        const docRef = await db.collection(COLLECTIONS.CUSTOMERS).add(data);
+        return { id: docRef.id, ...data };
+      } catch (e) {
+        console.warn('Firebase bloqueado, usando localStorage:', e.message);
+      }
+    }
+
+    const customers = readData(STORAGE_KEYS.CUSTOMERS, []);
+    customers.push(newCustomer);
+    saveData(STORAGE_KEYS.CUSTOMERS, customers);
+    return newCustomer;
+  },
+
+  async updateCustomer(id, customerData) {
+    const ownerId = getCurrentOwnerId();
+    if (!ownerId) return null;
+
+    const name = (customerData.name || '').trim();
+    if (!name) throw new Error('El nombre del cliente es obligatorio');
+
+    const updatedData = {
+      name,
+      phone: (customerData.phone || '').trim(),
+      phoneDigits: normalizePhoneDigits(customerData.phone),
+      email: (customerData.email || '').trim(),
+      address: (customerData.address || '').trim(),
+      notes: (customerData.notes || '').trim(),
+      updatedAt: new Date().toISOString()
+    };
+
+    if (isFirebaseAvailable()) {
+      try {
+        const customerRef = db.collection(COLLECTIONS.CUSTOMERS).doc(id);
+        const doc = await customerRef.get();
+        if (!doc.exists || doc.data().ownerId !== ownerId) return null;
+        await customerRef.update(updatedData);
+        return { id, ...updatedData };
+      } catch (e) {
+        console.warn('Firebase bloqueado, usando localStorage:', e.message);
+      }
+    }
+
+    const customers = readData(STORAGE_KEYS.CUSTOMERS, []);
+    const index = customers.findIndex(c => c.id === id && c.ownerId === ownerId);
+    if (index === -1) return null;
+    customers[index] = { ...customers[index], ...updatedData };
+    saveData(STORAGE_KEYS.CUSTOMERS, customers);
+    return customers[index];
+  },
+
+  async deleteCustomer(id) {
+    const ownerId = getCurrentOwnerId();
+    if (!ownerId) return false;
+
+    if (isFirebaseAvailable()) {
+      try {
+        const customerRef = db.collection(COLLECTIONS.CUSTOMERS).doc(id);
+        const doc = await customerRef.get();
+        if (!doc.exists || doc.data().ownerId !== ownerId) return false;
+        await customerRef.delete();
+        return true;
+      } catch (e) {
+        console.warn('Firebase bloqueado, usando localStorage:', e.message);
+      }
+    }
+
+    const customers = readData(STORAGE_KEYS.CUSTOMERS, []);
+    const filtered = customers.filter(c => !(c.id === id && c.ownerId === ownerId));
+    saveData(STORAGE_KEYS.CUSTOMERS, filtered);
+    return true;
+  },
+
+  // Busca un cliente por teléfono; si no existe lo crea. Devuelve el id o null
+  // si no hay teléfono con el que vincular la venta (ej. "Cliente general").
+  async upsertCustomerByPhone(name, phone) {
+    const phoneDigits = normalizePhoneDigits(phone);
+    if (!phoneDigits) return null;
+
+    const customers = await this.getCustomers();
+    const existing = customers.find(c => c.phoneDigits === phoneDigits);
+    if (existing) return existing.id;
+
+    try {
+      const created = await this.addCustomer({ name, phone });
+      return created.id;
+    } catch (e) {
+      console.warn('No se pudo vincular el cliente:', e.message);
+      return null;
+    }
+  },
+
   /* ============ VENTAS / FACTURACIÓN ============ */
   async getSales() {
     const ownerId = getCurrentOwnerId();
@@ -703,6 +845,10 @@ const DB = {
       ? await this.getNextOrderReference()
       : (options.orderReference || '').trim();
 
+    // Vincula la venta a un cliente registrado (se crea automáticamente si el
+    // teléfono no coincide con ninguno existente). Sin teléfono no hay vínculo.
+    const customerId = await this.upsertCustomerByPhone(options.customerName, options.customerPhone);
+
     const saleData = {
       id: generateId(),
       ownerId,
@@ -727,6 +873,7 @@ const DB = {
       saleType,
       customerName: (options.customerName || '').trim() || 'Cliente general',
       customerPhone: (options.customerPhone || '').trim(),
+      customerId,
       orderReference: resolvedOrderReference,
       dueDate: saleType === 'Credito' ? (options.dueDate || null) : null,
       notes: (options.notes || '').trim(),
@@ -1087,3 +1234,12 @@ async function seedSampleData() {
 /* ---------- INIT ---------- */
 // Asegurar usuario por defecto al cargar cualquier página
 DB.ensureDefaultUser();
+
+// Registrar el Service Worker (app shell offline / instalable como PWA)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch((e) => {
+      console.warn('No se pudo registrar el Service Worker:', e.message);
+    });
+  });
+}

@@ -1,0 +1,32 @@
+{
+  "name": "VextoERP - Facturación e Inventario",
+  "short_name": "VextoERP",
+  "description": "Sistema de facturación, inventario y clientes para pequeños negocios",
+  "start_url": "facturacion.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#7263f0",
+  "theme_color": "#7263f0",
+  "lang": "es-DO",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

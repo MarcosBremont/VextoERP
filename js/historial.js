@@ -16,6 +16,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderTopbarDate();
   setupMobileMenu();
 
+  // Prellenar la búsqueda si venimos de un enlace "Ver ventas" (ej. desde Clientes)
+  const presetQuery = new URLSearchParams(window.location.search).get('q');
+  if (presetQuery) {
+    document.getElementById('salesSearchInput').value = presetQuery;
+  }
+
   // Cargar datos
   await loadHistoryData();
 
@@ -120,6 +126,7 @@ async function renderSalesHistory() {
 
       return (sale.number || '').toLowerCase().includes(searchTerm) ||
              (sale.customerName || '').toLowerCase().includes(searchTerm) ||
+             (sale.customerPhone || '').toLowerCase().includes(searchTerm) ||
              productNames.includes(searchTerm);
     });
   }
