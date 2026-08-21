@@ -5,7 +5,7 @@
    se cachean aquí: siempre van directo a la red.
    ============================================ */
 
-const CACHE_VERSION = 'vextoerp-shell-v1';
+const CACHE_VERSION = 'vextoerp-shell-v2';
 
 const APP_SHELL = [
   './',
@@ -56,20 +56,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Red primero: así siempre se sirve el código más reciente cuando hay
+  // conexión. La caché queda solo como respaldo para cuando no hay red.
   event.respondWith(
-    caches.match(request).then((cached) => {
-      const network = fetch(request)
-        .then((response) => {
-          if (response && response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_VERSION).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        })
-        .catch(() => cached);
-
-      // Responder rápido desde caché si existe, mientras se actualiza en segundo plano.
-      return cached || network;
-    })
+    fetch(request)
+      .then((response) => {
+        if (response && response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_VERSION).then((cache) => cache.put(request, clone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(request))
   );
 });
