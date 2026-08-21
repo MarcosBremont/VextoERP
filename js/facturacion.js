@@ -7,6 +7,7 @@
 let cart = [];
 let allProducts = [];
 let allCategories = [];
+let allCustomers = [];
 let activeCategoryFilter = '';
 
 // Escapa un texto para insertarlo de forma segura dentro de comillas simples de un atributo onclick
@@ -125,8 +126,88 @@ async function resetCheckoutForm() {
   document.getElementById('deliveryCost').value = '';
   document.getElementById('deliveryDestination').value = '';
   document.getElementById('deliveryFieldsGroup').classList.add('hidden');
+  hideCustomerSuggestions();
   toggleCreditFields();
   await setNextOrderReferencePreview();
+}
+
+/* ============ AUTOCOMPLETAR CLIENTE ============ */
+
+// Se ejecuta al escribir en "Nombre del cliente" o "Teléfono del cliente":
+// sugiere clientes ya registrados y avisa si el teléfono es de uno nuevo.
+function onCustomerFieldInput() {
+  const name = document.getElementById('customerName').value.trim().toLowerCase();
+  const phone = document.getElementById('customerPhone').value.trim();
+  const term = name || phone;
+
+  if (term.length >= 2) {
+    const phoneDigits = normalizePhoneDigits(phone);
+    const matches = allCustomers.filter(c =>
+      c.name.toLowerCase().includes(term) ||
+      (phoneDigits && c.phoneDigits && c.phoneDigits.includes(phoneDigits))
+    ).slice(0, 5);
+    renderCustomerSuggestions(matches);
+  } else {
+    hideCustomerSuggestions();
+  }
+
+  renderCustomerStatus();
+}
+
+function renderCustomerSuggestions(matches) {
+  const container = document.getElementById('customerSuggestions');
+  if (matches.length === 0) {
+    container.classList.add('hidden');
+    container.innerHTML = '';
+    return;
+  }
+
+  container.classList.remove('hidden');
+  container.innerHTML = matches.map(c => `
+    <div class="customer-suggestion-item" onclick="selectCustomerSuggestion('${c.id}')">
+      <span class="cs-name">${escapeHtml(c.name)}</span>
+      <span class="cs-phone">${escapeHtml(c.phone || '')}</span>
+    </div>
+  `).join('');
+}
+
+function hideCustomerSuggestions() {
+  const container = document.getElementById('customerSuggestions');
+  container.classList.add('hidden');
+  container.innerHTML = '';
+}
+
+function selectCustomerSuggestion(customerId) {
+  const customer = allCustomers.find(c => c.id === customerId);
+  if (!customer) return;
+
+  document.getElementById('customerName').value = customer.name;
+  document.getElementById('customerPhone').value = customer.phone || '';
+  hideCustomerSuggestions();
+  renderCustomerStatus();
+}
+
+// Muestra si el teléfono ingresado ya pertenece a un cliente registrado
+// o si se creará uno nuevo automáticamente al confirmar la venta.
+function renderCustomerStatus() {
+  const statusEl = document.getElementById('customerStatus');
+  const phoneDigits = normalizePhoneDigits(document.getElementById('customerPhone').value);
+
+  if (phoneDigits.length < 6) {
+    statusEl.classList.add('hidden');
+    return;
+  }
+
+  const existing = allCustomers.find(c => c.phoneDigits === phoneDigits);
+  statusEl.classList.remove('hidden');
+
+  if (existing) {
+    statusEl.className = 'customer-status existing';
+    statusEl.textContent = `👤 Cliente existente: ${existing.name}`;
+  } else {
+    statusEl.className = 'customer-status new';
+    statusEl.textContent = '🆕 Se registrará como cliente nuevo al confirmar la venta';
+  }
 }
 
 function getCheckoutData() {
@@ -185,6 +266,7 @@ async function loadBillingData() {
   try {
     allProducts = await DB.getProducts();
     allCategories = await DB.getCategories();
+    allCustomers = await DB.getCustomers();
     renderCategoryPills();
     renderProductsBilling();
     await setNextOrderReferencePreview();
@@ -593,3 +675,10 @@ async function confirmSale() {
 function closeSaleSuccess() {
   closeModal('successModal');
 }
+
+// Ocultar las sugerencias de cliente al hacer clic fuera de los campos relacionados
+document.addEventListener('click', (e) => {
+  const relatedIds = ['customerName', 'customerPhone', 'customerSuggestions'];
+  if (relatedIds.some(id => e.target.closest && e.target.closest('#' + id))) return;
+  hideCustomerSuggestions();
+});

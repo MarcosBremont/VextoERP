@@ -172,12 +172,14 @@
             <div class="form-grid-2">
               <div class="form-group">
                 <label for="customerName">Nombre del cliente</label>
-                <input type="text" id="customerName" placeholder="Ej: Juan Perez">
+                <input type="text" id="customerName" placeholder="Ej: Juan Perez" autocomplete="off" oninput="onCustomerFieldInput()">
               </div>
               <div class="form-group">
                 <label for="customerPhone">Teléfono del cliente</label>
-                <input type="text" id="customerPhone" placeholder="Ej: 809-555-0000">
+                <input type="text" id="customerPhone" placeholder="Ej: 809-555-0000" autocomplete="off" oninput="onCustomerFieldInput()">
               </div>
+              <div class="customer-suggestions hidden" id="customerSuggestions" style="grid-column: 1 / -1;"></div>
+              <div class="customer-status hidden" id="customerStatus" style="grid-column: 1 / -1;"></div>
               <div class="form-group">
                 <label for="saleType">Tipo de venta</label>
                 <select id="saleType">

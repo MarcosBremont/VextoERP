@@ -1557,6 +1557,63 @@ h1, h2, h3, h4 {
   pointer-events: none;
 }
 
+/* ---------- Autocompletar cliente ---------- */
+.customer-suggestions {
+  margin-top: -10px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--white);
+}
+
+.customer-suggestion-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--gray-100);
+  transition: var(--transition);
+}
+
+.customer-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.customer-suggestion-item:hover {
+  background: var(--primary-light);
+}
+
+.customer-suggestion-item .cs-name {
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+.customer-suggestion-item .cs-phone {
+  color: var(--gray-400);
+  font-size: 0.78rem;
+}
+
+.customer-status {
+  margin-top: -10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+}
+
+.customer-status.existing {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.customer-status.new {
+  background: var(--gray-100);
+  color: var(--gray-500);
+}
+
 .checkout-extra-fields {
   text-align: left;
   margin-top: 10px;
