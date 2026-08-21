@@ -570,9 +570,27 @@ async function confirmSale() {
 
   const sale = result.sale;
 
+  // Encabezado y pie del comprobante con los datos de "Mi Empresa" (si están configurados)
+  const companySettings = await DB.getCompanySettings().catch(() => null);
+  const receiptHeader = companySettings && (companySettings.businessName || companySettings.logo) ? `
+    <div style="text-align:center; padding-bottom:14px; margin-bottom:10px; border-bottom:1px dashed var(--gray-300);">
+      ${companySettings.logo ? `<img src="${companySettings.logo}" alt="${escapeHtml(companySettings.businessName || '')}" style="max-width:120px; max-height:60px; object-fit:contain; margin-bottom:8px;">` : ''}
+      ${companySettings.businessName ? `<div style="font-weight:800; font-size:1.05rem; color:var(--gray-900);">${escapeHtml(companySettings.businessName)}</div>` : ''}
+      ${companySettings.taxId ? `<div style="font-size:0.75rem; color:var(--gray-500);">RNC/Céd: ${escapeHtml(companySettings.taxId)}</div>` : ''}
+      ${companySettings.address ? `<div style="font-size:0.75rem; color:var(--gray-500);">${escapeHtml(companySettings.address)}</div>` : ''}
+      ${companySettings.phone ? `<div style="font-size:0.75rem; color:var(--gray-500);">Tel: ${escapeHtml(companySettings.phone)}</div>` : ''}
+    </div>
+  ` : '';
+  const receiptFooter = companySettings && companySettings.receiptFooter ? `
+    <div style="text-align:center; margin-top:14px; padding-top:14px; border-top:1px dashed var(--gray-300); font-size:0.82rem; color:var(--gray-500);">
+      ${escapeHtml(companySettings.receiptFooter)}
+    </div>
+  ` : '';
+
   // Mostrar modal de éxito con detalles
   const summary = document.getElementById('successSummary');
   summary.innerHTML = `
+    ${receiptHeader}
     <div class="summary-row">
       <span>Comprobante N°:</span>
       <span><strong>${sale.number}</strong></span>
@@ -657,6 +675,7 @@ async function confirmSale() {
         <span>${formatCurrency(sale.changeDue || 0)}</span>
       </div>
     ` : ''}
+    ${receiptFooter}
   `;
 
   // Cerrar modal de confirmación y abrir el de éxito

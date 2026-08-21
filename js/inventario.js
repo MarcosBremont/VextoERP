@@ -32,41 +32,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 /* ============ FOTO DEL PRODUCTO ============ */
 let currentProductPhoto = null; // dataURL (base64) de la foto actual del formulario
 
-// Redimensiona y comprime una imagen a JPEG para que ocupe poco espacio
-function resizeImageFile(file, maxSize = 500, quality = 0.72) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > height && width > maxSize) {
-          height = Math.round(height * (maxSize / width));
-          width = maxSize;
-        } else if (height > maxSize) {
-          width = Math.round(width * (maxSize / height));
-          height = maxSize;
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        // Fondo blanco: el JPEG no soporta transparencia y las imágenes
-        // con fondo transparente (PNG) se verían negras sin esto.
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.onerror = () => reject(new Error('No se pudo leer la imagen'));
-      img.src = reader.result;
-    };
-    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
-    reader.readAsDataURL(file);
-  });
-}
-
 async function handleProductPhotoSelected(e) {
   const file = e.target.files[0];
   if (!file) return;

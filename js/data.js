@@ -11,6 +11,7 @@ const STORAGE_KEYS = {
   CATEGORIES: 'vexto_categories',
   SALES: 'vexto_sales',
   CUSTOMERS: 'vexto_customers',
+  COMPANY_SETTINGS: 'vexto_company_settings',
   SESSION: 'vexto_session',
   SALE_NUMBER: 'vexto_sale_number',
   ORDER_REFERENCE: 'vexto_order_reference'
@@ -23,6 +24,7 @@ const COLLECTIONS = {
   CATEGORIES: 'categories',
   SALES: 'sales',
   CUSTOMERS: 'customers',
+  COMPANY_SETTINGS: 'companySettings',
   COUNTERS: 'counters'
 };
 
@@ -71,6 +73,42 @@ function generateId() {
 // clientes sin importar el formato en que se haya escrito (espacios, guiones, etc.)
 function normalizePhoneDigits(phone) {
   return String(phone || '').replace(/\D/g, '');
+}
+
+// Redimensiona y comprime una imagen a JPEG para que ocupe poco espacio
+// (usado para fotos de producto y para el logo de la empresa).
+function resizeImageFile(file, maxSize = 500, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > height && width > maxSize) {
+          height = Math.round(height * (maxSize / width));
+          width = maxSize;
+        } else if (height > maxSize) {
+          width = Math.round(width * (maxSize / height));
+          height = maxSize;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        // Fondo blanco: el JPEG no soporta transparencia y las imágenes
+        // con fondo transparente (PNG) se verían negras sin esto.
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('No se pudo leer la imagen'));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.readAsDataURL(file);
+  });
 }
 
 // Leer datos del localStorage con validación
@@ -706,6 +744,59 @@ const DB = {
     }
   },
 
+  /* ============ CONFIGURACIÓN DE EMPRESA ============ */
+  // Un único documento de personalización por cuenta (nombre, logo, datos
+  // de contacto y nota al pie), usado en el sidebar y en el comprobante de venta.
+  async getCompanySettings() {
+    const ownerId = getCurrentOwnerId();
+    if (!ownerId) return null;
+
+    if (isFirebaseAvailable()) {
+      try {
+        const doc = await db.collection(COLLECTIONS.COMPANY_SETTINGS).doc(ownerId).get();
+        return doc.exists ? doc.data() : null;
+      } catch (e) {
+        console.warn('Firebase bloqueado, usando localStorage:', e.message);
+      }
+    }
+
+    const allSettings = readData(STORAGE_KEYS.COMPANY_SETTINGS, {});
+    return allSettings[ownerId] || null;
+  },
+
+  async saveCompanySettings(settingsData) {
+    const ownerId = getCurrentOwnerId();
+    if (!ownerId) throw new Error('No hay una sesión activa');
+
+    const businessName = (settingsData.businessName || '').trim();
+    if (!businessName) throw new Error('El nombre del negocio es obligatorio');
+
+    const data = {
+      businessName,
+      logo: settingsData.logo || null,
+      taxId: (settingsData.taxId || '').trim(),
+      address: (settingsData.address || '').trim(),
+      phone: (settingsData.phone || '').trim(),
+      email: (settingsData.email || '').trim(),
+      receiptFooter: (settingsData.receiptFooter || '').trim(),
+      updatedAt: new Date().toISOString()
+    };
+
+    if (isFirebaseAvailable()) {
+      try {
+        await db.collection(COLLECTIONS.COMPANY_SETTINGS).doc(ownerId).set(data, { merge: true });
+        return data;
+      } catch (e) {
+        console.warn('Firebase bloqueado, usando localStorage:', e.message);
+      }
+    }
+
+    const allSettings = readData(STORAGE_KEYS.COMPANY_SETTINGS, {});
+    allSettings[ownerId] = data;
+    saveData(STORAGE_KEYS.COMPANY_SETTINGS, allSettings);
+    return data;
+  },
+
   /* ============ VENTAS / FACTURACIÓN ============ */
   async getSales() {
     const ownerId = getCurrentOwnerId();
@@ -1183,6 +1274,30 @@ function renderSidebarUser() {
   });
 }
 
+// Aplica el nombre y logo configurados en "Mi Empresa" al sidebar.
+// Si la empresa no ha personalizado nada, se deja el branding por defecto.
+async function applyCompanyBranding() {
+  if (!DB.getSession()) return;
+
+  try {
+    const settings = await DB.getCompanySettings();
+    if (!settings) return;
+
+    if (settings.businessName) {
+      document.querySelectorAll('.sidebar-brand .brand-name').forEach(el => {
+        el.textContent = settings.businessName;
+      });
+    }
+    if (settings.logo) {
+      document.querySelectorAll('.sidebar-brand .logo-badge img').forEach(el => {
+        el.src = settings.logo;
+      });
+    }
+  } catch (e) {
+    console.error('Error aplicando la marca de la empresa:', e);
+  }
+}
+
 // Fecha actual en la topbar
 function renderTopbarDate() {
   const today = new Date().toLocaleDateString('es-DO', {
@@ -1234,6 +1349,13 @@ async function seedSampleData() {
 /* ---------- INIT ---------- */
 // Asegurar usuario por defecto al cargar cualquier página
 DB.ensureDefaultUser();
+
+// Aplicar el branding de la empresa (nombre/logo) en el sidebar de cada página
+document.addEventListener('DOMContentLoaded', () => {
+  if (document.querySelector('.sidebar-brand')) {
+    applyCompanyBranding();
+  }
+});
 
 // Registrar el Service Worker (app shell offline / instalable como PWA)
 if ('serviceWorker' in navigator) {
