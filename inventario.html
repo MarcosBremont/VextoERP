@@ -86,16 +86,18 @@
         <div class="card">
           <div class="card-header">
             <h3>🏷️ Productos del Inventario</h3>
-            <div class="toolbar">
+            <div class="toolbar toolbar-split">
               <input type="text" class="search-input" id="searchInput" placeholder="🔍 Buscar producto...">
-              <button class="btn btn-primary btn-sm" onclick="openProductModal()">
-                <span class="btn-plus">+</span>
-                <span>Nuevo Producto</span>
-              </button>
-              <button class="btn btn-secondary btn-sm" onclick="openCategoriesModal()">
-                <span>🏷️</span>
-                <span>Categorías</span>
-              </button>
+              <div class="toolbar-actions">
+                <button class="btn btn-primary btn-sm" onclick="openProductModal()">
+                  <span class="btn-plus">+</span>
+                  <span>Nuevo Producto</span>
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="openCategoriesModal()">
+                  <span>🏷️</span>
+                  <span>Categorías</span>
+                </button>
+              </div>
             </div>
           </div>
 

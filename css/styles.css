@@ -1708,21 +1708,21 @@ h1, h2, h3, h4 {
   min-width: 145px;
 }
 
-/* El toolbar del historial ocupa el espacio restante de la cabecera:
-   la búsqueda queda anclada a la izquierda y los pickers Tipo/Estado
-   se agrupan juntos a la derecha, sin separarse al hacer wrap. */
-.sales-toolbar {
+/* Toolbar de cabecera con la búsqueda anclada a la izquierda y los
+   filtros/botones agrupados juntos a la derecha, sin separarse al
+   hacer wrap en pantallas angostas (Historial, Clientes, Inventario). */
+.toolbar-split {
   flex: 1;
   justify-content: space-between;
 }
 
-.sales-toolbar .search-input {
+.toolbar-split .search-input {
   flex: 1;
   min-width: 220px;
   max-width: 360px;
 }
 
-.filter-group {
+.toolbar-actions {
   display: flex;
   align-items: center;
   gap: 12px;
