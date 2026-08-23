@@ -603,6 +603,13 @@ h1, h2, h3, h4 {
   color: var(--white);
 }
 
+.version-badge {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 0.7rem;
+  color: var(--gray-300);
+}
+
 /* ---------- Main Content ---------- */
 .main-content {
   flex: 1;

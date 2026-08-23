@@ -1298,6 +1298,23 @@ async function applyCompanyBranding() {
   }
 }
 
+// Muestra el número de versión (desde version.json) en la esquina inferior del sidebar
+async function applyVersionBadge() {
+  const badge = document.getElementById('versionBadge');
+  if (!badge) return;
+
+  try {
+    const response = await fetch('version.json', { cache: 'no-store' });
+    if (!response.ok) return;
+    const data = await response.json();
+    if (data.version) {
+      badge.textContent = `v${data.version}`;
+    }
+  } catch (e) {
+    console.warn('No se pudo leer version.json:', e.message);
+  }
+}
+
 // Fecha actual en la topbar
 function renderTopbarDate() {
   const today = new Date().toLocaleDateString('es-DO', {
@@ -1354,6 +1371,9 @@ DB.ensureDefaultUser();
 document.addEventListener('DOMContentLoaded', () => {
   if (document.querySelector('.sidebar-brand')) {
     applyCompanyBranding();
+  }
+  if (document.getElementById('versionBadge')) {
+    applyVersionBadge();
   }
 });
 

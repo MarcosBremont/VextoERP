@@ -27,6 +27,7 @@ const APP_SHELL = [
   'vextologo1.png',
   'vextologo2.png',
   'manifest.json',
+  'version.json',
   'icons/icon-192.png',
   'icons/icon-512.png'
 ];
