@@ -1259,6 +1259,7 @@ function redirectIfLogged() {
 // Cerrar sesión
 function logout() {
   DB.clearSession();
+  localStorage.removeItem('vexto_company_branding_cache');
   window.location.href = 'index.html';
 }
 
@@ -1281,7 +1282,11 @@ async function applyCompanyBranding() {
 
   try {
     const settings = await DB.getCompanySettings();
-    if (!settings) return;
+
+    if (!settings || (!settings.businessName && !settings.logo)) {
+      localStorage.removeItem('vexto_company_branding_cache');
+      return;
+    }
 
     if (settings.businessName) {
       document.querySelectorAll('.sidebar-brand .brand-name').forEach(el => {
@@ -1293,6 +1298,13 @@ async function applyCompanyBranding() {
         el.src = settings.logo;
       });
     }
+
+    // Guardar en caché local para que la próxima página lo aplique de inmediato
+    // (antes de confirmar con Firebase) y no parpadee el logo/nombre por defecto.
+    localStorage.setItem('vexto_company_branding_cache', JSON.stringify({
+      businessName: settings.businessName || '',
+      logo: settings.logo || ''
+    }));
   } catch (e) {
     console.error('Error aplicando la marca de la empresa:', e);
   }

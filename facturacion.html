@@ -18,13 +18,27 @@
     <aside class="sidebar">
       <div class="sidebar-brand">
         <div class="logo-badge">
-          <img src="vextologo1.png" alt="VextoERP">
+          <img src="vextologo1.png" alt="VextoERP" id="sidebarLogoImg">
         </div>
         <div class="sidebar-brand-text">
-          <span class="brand-name">VextoERP</span>
+          <span class="brand-name" id="sidebarBrandName">VextoERP</span>
           <span class="brand-sub">Facturación & Inventario</span>
         </div>
       </div>
+      <script>
+        // Aplica el logo/nombre de la empresa ANTES de pintar, usando la última
+        // copia guardada en este navegador, para no mostrar "VextoERP" ni su
+        // logo por defecto mientras se confirma la configuración con Firebase.
+        (function () {
+          try {
+            var cached = localStorage.getItem('vexto_company_branding_cache');
+            if (!cached) return;
+            var data = JSON.parse(cached);
+            if (data.businessName) document.getElementById('sidebarBrandName').textContent = data.businessName;
+            if (data.logo) document.getElementById('sidebarLogoImg').src = data.logo;
+          } catch (e) {}
+        })();
+      </script>
 
       <nav class="sidebar-nav">
         <div class="nav-section">Principal</div>
