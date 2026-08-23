@@ -113,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const username = document.getElementById('regUsername').value.trim();
       const password = document.getElementById('regPassword').value;
       const confirmPassword = document.getElementById('regConfirmPassword').value;
+      const businessCode = document.getElementById('regBusinessCode').value.trim();
 
       // Validaciones
       if (!name) {
@@ -137,13 +138,16 @@ document.addEventListener('DOMContentLoaded', () => {
       registerBtnText.textContent = 'Creando cuenta...';
 
       try {
-        const result = await DB.registerUser({ name, username, password, role: 'Vendedor' });
+        const result = await DB.registerUser({ name, username, password, businessCode });
 
         if (result.success) {
           // Auto-login con el nuevo usuario
           DB.setSession(result.user);
           hideLoginError();
-          showToast('¡Cuenta creada! Bienvenido, ' + result.user.name, 'success');
+          const welcomeMsg = result.user.role === 'Vendedor'
+            ? '¡Te uniste al equipo! Bienvenido, ' + result.user.name
+            : '¡Cuenta creada! Bienvenido, ' + result.user.name;
+          showToast(welcomeMsg, 'success');
           setTimeout(() => {
             window.location.href = 'facturacion.html';
           }, 600);

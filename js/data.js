@@ -138,9 +138,14 @@ function isFirebaseAvailable() {
   return typeof firebase !== 'undefined' && typeof db !== 'undefined';
 }
 
+// El "dueño" de los datos es el NEGOCIO, no la persona que inició sesión:
+// el administrador que funda un negocio es dueño de sí mismo (businessId
+// == su propio id); un empleado que se unió con un código queda con el
+// businessId del administrador, y por lo tanto ve los mismos datos.
 function getCurrentOwnerId() {
   const session = readData(STORAGE_KEYS.SESSION, null);
-  return session && session.id ? session.id : null;
+  if (!session || !session.id) return null;
+  return session.businessId || session.id;
 }
 
 function filterOwnedRecords(records) {
@@ -245,9 +250,36 @@ const DB = {
     ) || null;
   },
 
-  // Registrar un nuevo usuario
+  async getUserById(id) {
+    if (isFirebaseAvailable()) {
+      try {
+        const doc = await db.collection(COLLECTIONS.USERS).doc(id).get();
+        return doc.exists ? { id: doc.id, ...doc.data() } : null;
+      } catch (e) {
+        console.warn('Firebase bloqueado, usando localStorage:', e.message);
+      }
+    }
+    const users = readData(STORAGE_KEYS.USERS, []);
+    return users.find(u => u.id === id) || null;
+  },
+
+  // Registrar un nuevo usuario. Sin código de negocio, funda un negocio
+  // nuevo y queda como su Administrador; con un código válido, se une a
+  // ese negocio como Vendedor y comparte todos sus datos.
   async registerUser(userData) {
     const username = userData.username.trim().toLowerCase();
+    const businessCode = (userData.businessCode || '').trim();
+
+    let businessId = null;
+    let role = 'Administrador';
+    if (businessCode) {
+      const owner = await this.getUserById(businessCode);
+      if (!owner) {
+        return { success: false, error: 'El código de negocio no es válido' };
+      }
+      businessId = businessCode;
+      role = 'Vendedor';
+    }
 
     // Verificar duplicado
     if (isFirebaseAvailable()) {
@@ -265,7 +297,8 @@ const DB = {
           name: userData.name.trim(),
           username: username,
           password: userData.password,
-          role: userData.role || 'Vendedor',
+          role,
+          businessId,
           createdAt: new Date().toISOString()
         });
 
@@ -275,7 +308,8 @@ const DB = {
             id: docRef.id,
             name: userData.name.trim(),
             username: username,
-            role: userData.role || 'Vendedor'
+            role,
+            businessId: businessId || docRef.id
           }
         };
       } catch (e) {
@@ -294,7 +328,8 @@ const DB = {
       name: userData.name.trim(),
       username: username,
       password: userData.password,
-      role: userData.role || 'Vendedor',
+      role,
+      businessId,
       createdAt: new Date().toISOString()
     };
     users.push(newUser);
@@ -306,9 +341,53 @@ const DB = {
         id: newUser.id,
         name: newUser.name,
         username: newUser.username,
-        role: newUser.role
+        role: newUser.role,
+        businessId: businessId || newUser.id
       }
     };
+  },
+
+  // Miembros del negocio actual (el dueño + quienes se unieron con su código)
+  async getTeamMembers() {
+    const businessId = getCurrentOwnerId();
+    if (!businessId) return [];
+
+    const users = await this.getUsers();
+    return users
+      .filter(u => u.id === businessId || u.businessId === businessId)
+      .sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+  },
+
+  // Revoca el acceso de un empleado. No se puede quitar al dueño del negocio.
+  async removeTeamMember(userId) {
+    const businessId = getCurrentOwnerId();
+    if (!businessId) return { success: false, error: 'No hay una sesión activa' };
+    if (userId === businessId) {
+      return { success: false, error: 'No puedes quitar al dueño del negocio' };
+    }
+
+    if (isFirebaseAvailable()) {
+      try {
+        const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
+        const doc = await userRef.get();
+        if (!doc.exists || doc.data().businessId !== businessId) {
+          return { success: false, error: 'Ese miembro no pertenece a tu negocio' };
+        }
+        await userRef.delete();
+        return { success: true };
+      } catch (e) {
+        console.warn('Firebase bloqueado, usando localStorage:', e.message);
+      }
+    }
+
+    const users = readData(STORAGE_KEYS.USERS, []);
+    const target = users.find(u => u.id === userId);
+    if (!target || target.businessId !== businessId) {
+      return { success: false, error: 'Ese miembro no pertenece a tu negocio' };
+    }
+    const filtered = users.filter(u => u.id !== userId);
+    saveData(STORAGE_KEYS.USERS, filtered);
+    return { success: true };
   },
 
   /* ============ SESIÓN ============ */
@@ -321,7 +400,11 @@ const DB = {
       id: user.id,
       name: user.name,
       username: user.username,
-      role: user.role
+      role: user.role,
+      // Cuentas creadas antes de existir "negocios" no tienen businessId
+      // guardado: se asume que son dueñas de sí mismas (comportamiento
+      // idéntico al que ya tenían).
+      businessId: user.businessId || user.id
     };
     return saveData(STORAGE_KEYS.SESSION, sessionUser);
   },
@@ -1327,6 +1410,27 @@ async function applyVersionBadge() {
   }
 }
 
+// ¿Esta sesión es dueña del negocio (lo fundó) o es un empleado que se
+// unió con un código? Se usa esto (y no el texto del rol) para decidir
+// quién ve Mi Empresa/Mi Equipo, así una cuenta independiente creada
+// antes de que existiera este sistema de equipos no pierde acceso a su
+// propia configuración solo por tener guardado el rol "Vendedor".
+function isBusinessOwner(session) {
+  return !!session && session.id === session.businessId;
+}
+
+// Oculta del sidebar los apartados exclusivos del dueño del negocio
+// (Mi Empresa, Mi Equipo) para quienes se unieron como empleados.
+function applyRoleVisibility() {
+  const session = DB.getSession();
+  if (!session) return;
+
+  const isOwner = isBusinessOwner(session);
+  document.querySelectorAll('#accountNavSection, #companyNavItem, #teamNavItem').forEach(el => {
+    el.classList.toggle('hidden', !isOwner);
+  });
+}
+
 // Fecha actual en la topbar
 function renderTopbarDate() {
   const today = new Date().toLocaleDateString('es-DO', {
@@ -1387,6 +1491,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (document.getElementById('versionBadge')) {
     applyVersionBadge();
   }
+  applyRoleVisibility();
 });
 
 // Registrar el Service Worker (app shell offline / instalable como PWA)

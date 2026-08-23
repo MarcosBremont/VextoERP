@@ -7,6 +7,13 @@ let currentCompanyLogo = null; // dataURL (base64) del logo actual del formulari
 document.addEventListener('DOMContentLoaded', async () => {
   if (!requireAuth()) return;
 
+  // Solo el dueño del negocio puede personalizar la cuenta compartida
+  if (!isBusinessOwner(DB.getSession())) {
+    showToast('No tienes permiso para acceder a esta sección', 'error');
+    window.location.href = 'facturacion.html';
+    return;
+  }
+
   renderSidebarUser();
   renderTopbarDate();
   setupMobileMenu();

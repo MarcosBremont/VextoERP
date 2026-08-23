@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VextoERP | Historial de Ventas</title>
+  <title>VextoERP | Mi Equipo</title>
   <link rel="stylesheet" href="css/styles.css">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta name="theme-color" content="#7263f0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="VextoERP">
-  <link rel="shortcut icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+  <link rel="shortcut icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧑‍🤝‍🧑</text></svg>">
 </head>
 <body>
   <div class="app-layout">
@@ -26,9 +26,6 @@
         </div>
       </div>
       <script>
-        // Aplica el logo/nombre de la empresa ANTES de pintar, usando la última
-        // copia guardada en este navegador, para no mostrar "VextoERP" ni su
-        // logo por defecto mientras se confirma la configuración con Firebase.
         (function () {
           try {
             var cached = localStorage.getItem('vexto_company_branding_cache');
@@ -46,7 +43,7 @@
           <span class="nav-icon">🧾</span>
           <span>Facturación</span>
         </a>
-        <a href="historial.html" class="nav-item active">
+        <a href="historial.html" class="nav-item">
           <span class="nav-icon">📋</span>
           <span>Historial</span>
         </a>
@@ -63,7 +60,7 @@
           <span class="nav-icon">🏢</span>
           <span>Mi Empresa</span>
         </a>
-        <a href="equipo.html" class="nav-item" id="teamNavItem">
+        <a href="equipo.html" class="nav-item active" id="teamNavItem">
           <span class="nav-icon">🧑‍🤝‍🧑</span>
           <span>Mi Equipo</span>
         </a>
@@ -90,7 +87,7 @@
       <header class="topbar">
         <div style="display:flex; align-items:center; gap:12px;">
           <button class="menu-toggle" aria-label="Abrir menú">☰</button>
-          <h2>📋 Historial de Ventas</h2>
+          <h2>🧑‍🤝‍🧑 Mi Equipo</h2>
         </div>
         <div class="topbar-right">
           <span class="topbar-date" id="todayDate"></span>
@@ -98,54 +95,42 @@
       </header>
 
       <div class="content-area">
-        <!-- Stats Cards -->
-        <div class="stats-grid" id="statsGrid"></div>
-
-        <div class="card sales-history-card">
+        <div class="card" style="max-width: 640px;">
           <div class="card-header">
-            <h3>📋 Historial de Ventas</h3>
-            <div class="toolbar toolbar-split">
-              <input type="text" class="search-input" id="salesSearchInput" placeholder="🔍 Buscar por cliente, producto o comprobante...">
-              <div class="toolbar-actions">
-                <select id="salesTypeFilter" class="sales-filter-select">
-                  <option value="">Tipo: Todos</option>
-                  <option value="Contado">Al contado</option>
-                  <option value="Credito">A crédito</option>
-                </select>
-                <select id="salesStatusFilter" class="sales-filter-select">
-                  <option value="">Estado: Todos</option>
-                  <option value="Pagada">Pagada</option>
-                  <option value="Pendiente">Pendiente</option>
-                </select>
-              </div>
+            <h3>🔑 Código de tu negocio</h3>
+          </div>
+          <div class="card-body">
+            <p style="color:var(--gray-500); font-size:0.9rem; margin-bottom:14px;">
+              Comparte este código con las personas que trabajan contigo. Al
+              registrarse con él en la pantalla de inicio de sesión, quedarán
+              vinculadas a tu negocio y verán el mismo inventario, clientes y
+              ventas que tú, con rol de Vendedor.
+            </p>
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="businessCodeInput" readonly style="font-family:monospace;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="copyBusinessCode()" style="flex-shrink:0;">📋 Copiar</button>
             </div>
           </div>
+        </div>
 
+        <div class="card" style="margin-top:20px;">
+          <div class="card-header">
+            <h3>👥 Miembros del equipo</h3>
+          </div>
           <div class="card-body">
-            <div class="table-responsive" id="salesHistoryTableWrap">
+            <div class="table-responsive">
               <table class="data-table">
                 <thead>
                   <tr>
-                    <th>Comprobante</th>
-                    <th>Fecha</th>
-                    <th>Cliente</th>
-                    <th>Productos</th>
-                    <th>Tipo</th>
-                    <th>Pago</th>
-                    <th>Estado</th>
-                    <th>Total</th>
-                    <th>Saldo</th>
-                    <th>Acciones</th>
+                    <th>Nombre</th>
+                    <th>Usuario</th>
+                    <th>Rol</th>
+                    <th>Desde</th>
+                    <th style="text-align:right;">Acciones</th>
                   </tr>
                 </thead>
-                <tbody id="salesHistoryBody"></tbody>
+                <tbody id="teamTableBody"></tbody>
               </table>
-            </div>
-
-            <div class="empty-state hidden" id="salesHistoryEmptyState">
-              <div class="empty-icon">🧾</div>
-              <h3>Sin ventas para mostrar</h3>
-              <p>Ajusta los filtros o registra una nueva venta</p>
             </div>
           </div>
         </div>
@@ -153,52 +138,26 @@
     </main>
   </div>
 
-  <!-- ============ MODAL: REGISTRAR ABONO ============ -->
-  <div class="modal-overlay" id="creditPaymentModal">
-    <div class="modal" style="max-width: 460px;">
-      <div class="modal-header">
-        <h3>💵 Registrar Abono</h3>
-        <button class="modal-close" onclick="closeCreditPaymentModal()">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="sale-summary" id="creditPaymentSummary"></div>
-
-        <div class="form-group">
-          <label for="paymentAmount">Monto a abonar (RD$)</label>
-          <input type="number" id="paymentAmount" min="0.01" step="0.01" placeholder="Ej: 500.00">
-        </div>
-
-        <div class="form-group">
-          <label for="paymentNote">Nota del abono</label>
-          <textarea id="paymentNote" rows="2" placeholder="Ej: Pago parcial en efectivo"></textarea>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeCreditPaymentModal()">Cancelar</button>
-        <button class="btn btn-success" onclick="confirmCreditPayment()">✅ Guardar Abono</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============ MODAL: ELIMINAR VENTA ============ -->
-  <div class="modal-overlay" id="deleteSaleModal">
+  <!-- ============ MODAL: QUITAR ACCESO ============ -->
+  <div class="modal-overlay" id="removeTeamMemberModal">
     <div class="modal" style="max-width: 420px;">
       <div class="modal-header">
-        <h3>🗑️ Eliminar Venta</h3>
-        <button class="modal-close" onclick="closeModal('deleteSaleModal')">✕</button>
+        <h3>🗑️ Quitar Acceso</h3>
+        <button class="modal-close" onclick="closeModal('removeTeamMemberModal')">✕</button>
       </div>
       <div class="modal-body">
         <p style="text-align:center; color:var(--gray-600); margin-bottom: 8px;">
-          ¿Estás seguro de que deseas eliminar la venta
-          <strong id="deleteSaleRef" style="color:var(--gray-900);">esta venta</strong>?
+          ¿Quitarle el acceso a
+          <strong id="removeTeamMemberName" style="color:var(--gray-900);">este miembro</strong>?
         </p>
         <p style="text-align:center; font-size:0.85rem; color:var(--gray-400);">
-          Esta acción no se puede deshacer y devolverá al inventario el stock de los productos vendidos.
+          No podrá volver a iniciar sesión con esa cuenta. Las ventas que ya
+          registró se conservan en el historial.
         </p>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeModal('deleteSaleModal')">Cancelar</button>
-        <button class="btn btn-danger" onclick="confirmDeleteSale()">🗑️ Sí, Eliminar</button>
+        <button class="btn btn-secondary" onclick="closeModal('removeTeamMemberModal')">Cancelar</button>
+        <button class="btn btn-danger" onclick="confirmRemoveTeamMember()">🗑️ Sí, Quitar Acceso</button>
       </div>
     </div>
   </div>
@@ -210,6 +169,6 @@
 
   <script src="js/firebase-config.js"></script>
   <script src="js/data.js"></script>
-  <script src="js/historial.js"></script>
+  <script src="js/equipo.js"></script>
 </body>
 </html>
