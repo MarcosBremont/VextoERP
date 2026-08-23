@@ -336,6 +336,10 @@ h1, h2, h3, h4 {
   line-height: 1;
 }
 
+.btn-secondary .btn-plus {
+  color: var(--gray-700);
+}
+
 .btn-secondary {
   background: var(--gray-100);
   color: var(--gray-700);
