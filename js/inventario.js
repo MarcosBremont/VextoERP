@@ -229,6 +229,7 @@ function openProductModal(productId = null) {
   document.getElementById('productId').value = '';
   currentProductPhoto = null;
   renderCategoryOptions();
+  document.getElementById('inlineCategoryAdd').classList.add('hidden');
 
   if (productId) {
     const product = allProducts.find(p => p.id === productId);
@@ -348,6 +349,38 @@ function renderCategoryOptions() {
 
   if (currentValue && allCategories.some(c => c.name === currentValue)) {
     select.value = currentValue;
+  }
+}
+
+// Alterna el campo para agregar una categoría sin salir del modal de producto
+function toggleInlineCategoryInput() {
+  const row = document.getElementById('inlineCategoryAdd');
+  row.classList.toggle('hidden');
+  if (!row.classList.contains('hidden')) {
+    const input = document.getElementById('inlineCategoryName');
+    input.value = '';
+    setTimeout(() => input.focus(), 50);
+  }
+}
+
+async function addInlineCategory() {
+  const input = document.getElementById('inlineCategoryName');
+  const name = input.value.trim();
+  if (!name) {
+    showToast('Escribe un nombre para la categoría', 'warning');
+    return;
+  }
+
+  try {
+    const created = await DB.addCategory(name);
+    allCategories.push(created);
+    allCategories.sort((a, b) => a.name.localeCompare(b.name));
+    renderCategoryOptions();
+    document.getElementById('productCategory').value = created.name;
+    document.getElementById('inlineCategoryAdd').classList.add('hidden');
+    showToast('✅ Categoría agregada');
+  } catch (err) {
+    showToast(err.message || 'No se pudo agregar la categoría', 'error');
   }
 }
 

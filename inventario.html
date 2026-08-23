@@ -174,10 +174,19 @@
 
           <div class="form-group">
             <label for="productCategory">Categoría *</label>
-            <select id="productCategory" required>
-              <option value="">Selecciona una categoría</option>
-            </select>
-            <div class="hint">¿Falta una categoría? Adminístralas desde el botón "🏷️ Categorías".</div>
+            <div class="category-select-row">
+              <select id="productCategory" required>
+                <option value="">Selecciona una categoría</option>
+              </select>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="toggleInlineCategoryInput()">
+                <span class="btn-plus">+</span>
+                <span>Nueva</span>
+              </button>
+            </div>
+            <div class="inline-category-add hidden" id="inlineCategoryAdd">
+              <input type="text" id="inlineCategoryName" placeholder="Nombre de la nueva categoría" onkeydown="if(event.key==='Enter'){event.preventDefault(); addInlineCategory();}">
+              <button type="button" class="btn btn-primary btn-sm" onclick="addInlineCategory()">Agregar</button>
+            </div>
           </div>
 
           <div class="form-grid-2">
