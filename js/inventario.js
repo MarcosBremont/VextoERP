@@ -2,6 +2,12 @@
    VextoERP - Inventario (CRUD de Productos)
    ============================================ */
 
+// Productos y categorías se traen UNA vez de Firebase y se guardan aquí.
+// Todo lo demás (stats, tabla, formularios, popups) lee/actualiza esta
+// caché en memoria en vez de volver a consultar Firestore en cada acción.
+let allProducts = [];
+let allCategories = [];
+
 document.addEventListener('DOMContentLoaded', async () => {
   // Proteger ruta: si no hay sesión, redirigir al login
   if (!requireAuth()) return;
@@ -15,8 +21,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await DB.ensureDefaultCategories();
 
   // Cargar datos
-  await renderStats();
-  await renderProductsTable();
+  await loadInventoryData();
 
   // Búsqueda en tiempo real
   const searchInput = document.getElementById('searchInput');
@@ -85,18 +90,29 @@ function toggleStockFields() {
   stockInput.required = !unlimited;
 }
 
+async function loadInventoryData() {
+  try {
+    allProducts = await DB.getProducts();
+    allCategories = await DB.getCategories();
+    renderStats();
+    renderProductsTable();
+  } catch (e) {
+    console.error('Error cargando el inventario:', e);
+    showToast('Error al cargar datos desde Firebase', 'error');
+  }
+}
+
 /* ============ STATS CARDS ============ */
-async function renderStats() {
-  const products = await DB.getProducts();
-  const lowStock = await DB.getLowStockProducts();
-  const totalUnits = await DB.getTotalUnits();
-  const inventoryValue = await DB.getInventoryValue();
+function renderStats() {
+  const lowStockCount = allProducts.filter(p => !p.unlimitedStock && p.stock <= p.minStock).length;
+  const totalUnits = allProducts.reduce((sum, p) => sum + (p.unlimitedStock ? 0 : p.stock), 0);
+  const inventoryValue = allProducts.reduce((sum, p) => sum + (p.unlimitedStock ? 0 : p.stock * (p.cost || p.price || 0)), 0);
 
   const stats = [
     {
       icon: '🏷️',
       iconClass: 'indigo',
-      value: products.length,
+      value: allProducts.length,
       label: 'Productos registrados'
     },
     {
@@ -108,7 +124,7 @@ async function renderStats() {
     {
       icon: '⚠️',
       iconClass: 'amber',
-      value: lowStock.length,
+      value: lowStockCount,
       label: 'Productos con stock bajo'
     },
     {
@@ -129,12 +145,12 @@ async function renderStats() {
 }
 
 /* ============ TABLA DE PRODUCTOS ============ */
-async function renderProductsTable() {
+function renderProductsTable() {
   const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
   const tbody = document.getElementById('productsTableBody');
   const emptyState = document.getElementById('emptyState');
 
-  let products = await DB.getProducts();
+  let products = [...allProducts];
 
   // Filtrar por búsqueda
   if (searchTerm) {
@@ -205,18 +221,17 @@ async function renderProductsTable() {
 }
 
 /* ============ NUEVO / EDITAR PRODUCTO ============ */
-async function openProductModal(productId = null) {
-  const modal = document.getElementById('productModal');
+function openProductModal(productId = null) {
   const form = document.getElementById('productForm');
   const title = document.getElementById('modalTitle');
 
   form.reset();
   document.getElementById('productId').value = '';
   currentProductPhoto = null;
-  await renderCategoryOptions();
+  renderCategoryOptions();
 
   if (productId) {
-    const product = (await DB.getProducts()).find(p => p.id === productId);
+    const product = allProducts.find(p => p.id === productId);
     if (!product) return;
 
     title.textContent = '✏️ Editar Producto';
@@ -278,25 +293,30 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
 
   const productData = { name, description, category, price, cost, unlimitedStock, stock, minStock: minStock || 0, photo: currentProductPhoto };
 
+  // Se actualiza la caché local con el resultado, sin volver a descargar
+  // todo el inventario de Firebase.
   if (productId) {
-    await DB.updateProduct(productId, productData);
+    const updated = await DB.updateProduct(productId, productData);
+    const index = allProducts.findIndex(p => p.id === productId);
+    if (index !== -1) allProducts[index] = updated;
     showToast('✅ Producto actualizado correctamente');
   } else {
-    await DB.addProduct(productData);
+    const created = await DB.addProduct(productData);
+    allProducts.push(created);
     showToast('✅ Producto agregado al inventario');
   }
 
   closeModal('productModal');
-  await renderStats();
-  await renderProductsTable();
+  renderStats();
+  renderProductsTable();
 });
 
 /* ============ ELIMINAR PRODUCTO ============ */
 let deleteProductId = null;
 
-async function openDeleteModal(productId) {
+function openDeleteModal(productId) {
   deleteProductId = productId;
-  const product = (await DB.getProducts()).find(p => p.id === productId);
+  const product = allProducts.find(p => p.id === productId);
   if (product) {
     document.getElementById('deleteProductName').textContent = product.name;
   }
@@ -307,46 +327,45 @@ async function confirmDeleteProduct() {
   if (!deleteProductId) return;
 
   await DB.deleteProduct(deleteProductId);
+  allProducts = allProducts.filter(p => p.id !== deleteProductId);
   deleteProductId = null;
   closeModal('deleteModal');
   showToast('🗑️ Producto eliminado');
 
-  await renderStats();
-  await renderProductsTable();
+  renderStats();
+  renderProductsTable();
 }
 
 /* ============ CATEGORÍAS ============ */
 
 // Rellenar el <select> de categorías del formulario de producto
-async function renderCategoryOptions() {
+function renderCategoryOptions() {
   const select = document.getElementById('productCategory');
   const currentValue = select.value;
-  const categories = await DB.getCategories();
 
   select.innerHTML = '<option value="">Selecciona una categoría</option>' +
-    categories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+    allCategories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
 
-  if (currentValue && categories.some(c => c.name === currentValue)) {
+  if (currentValue && allCategories.some(c => c.name === currentValue)) {
     select.value = currentValue;
   }
 }
 
-async function openCategoriesModal() {
-  await renderCategoriesList();
+function openCategoriesModal() {
+  renderCategoriesList();
   openModal('categoriesModal');
   setTimeout(() => document.getElementById('newCategoryName').focus(), 100);
 }
 
-async function renderCategoriesList() {
+function renderCategoriesList() {
   const list = document.getElementById('categoryList');
-  const categories = await DB.getCategories();
 
-  if (categories.length === 0) {
+  if (allCategories.length === 0) {
     list.innerHTML = '<li class="category-list-empty">Aún no hay categorías</li>';
     return;
   }
 
-  list.innerHTML = categories.map(c => `
+  list.innerHTML = allCategories.map(c => `
     <li class="category-list-item">
       <span>${escapeHtml(c.name)}</span>
       <button type="button" class="btn-icon delete-btn" onclick="deleteCategory('${c.id}')" title="Eliminar categoría">🗑️</button>
@@ -360,9 +379,10 @@ async function deleteCategory(categoryId) {
   }
 
   await DB.deleteCategory(categoryId);
+  allCategories = allCategories.filter(c => c.id !== categoryId);
   showToast('🗑️ Categoría eliminada');
-  await renderCategoriesList();
-  await renderCategoryOptions();
+  renderCategoriesList();
+  renderCategoryOptions();
 }
 
 document.getElementById('categoryForm').addEventListener('submit', async (e) => {
@@ -373,11 +393,13 @@ document.getElementById('categoryForm').addEventListener('submit', async (e) => 
   if (!name) return;
 
   try {
-    await DB.addCategory(name);
+    const created = await DB.addCategory(name);
+    allCategories.push(created);
+    allCategories.sort((a, b) => a.name.localeCompare(b.name));
     input.value = '';
     showToast('✅ Categoría agregada');
-    await renderCategoriesList();
-    await renderCategoryOptions();
+    renderCategoriesList();
+    renderCategoryOptions();
   } catch (err) {
     showToast(err.message || 'No se pudo agregar la categoría', 'error');
   }

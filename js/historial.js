@@ -4,6 +4,7 @@
    ============================================ */
 
 let allProducts = [];
+let allSales = [];
 let activePaymentSaleId = null;
 let deleteSaleId = null;
 
@@ -31,11 +32,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('salesStatusFilter').addEventListener('change', renderSalesHistory);
 });
 
+// Trae productos y ventas UNA vez desde Firebase y los deja en memoria
+// (allProducts/allSales). El resto de la pantalla (stats, tabla, popups)
+// lee de esa caché en lugar de volver a consultar Firestore en cada acción.
 async function loadHistoryData() {
   try {
     allProducts = await DB.getProducts();
-    await renderStats();
-    await renderSalesHistory();
+    allSales = await DB.getSales();
+    renderStats();
+    renderSalesHistory();
   } catch (e) {
     console.error('Error cargando datos:', e);
     showToast('Error al cargar datos desde Firebase', 'error');
@@ -43,10 +48,18 @@ async function loadHistoryData() {
 }
 
 /* ============ STATS CARDS ============ */
-async function renderStats() {
+function renderStats() {
   try {
-    const todaySales = await DB.getTodaySales();
-    const totalSales = await DB.getTotalSales();
+    const today = new Date().toDateString();
+    const todaySalesList = allSales.filter(s => new Date(s.date).toDateString() === today);
+    const todaySales = {
+      count: todaySalesList.length,
+      total: todaySalesList.reduce((sum, s) => sum + s.total, 0)
+    };
+    const totalSales = {
+      count: allSales.length,
+      total: allSales.reduce((sum, s) => sum + s.total, 0)
+    };
     const lowStock = allProducts.filter(p => !p.unlimitedStock && p.stock <= p.minStock).length;
 
     const stats = [
@@ -89,7 +102,7 @@ async function renderStats() {
 }
 
 /* ============ TABLA DE HISTORIAL ============ */
-async function renderSalesHistory() {
+function renderSalesHistory() {
   const tbody = document.getElementById('salesHistoryBody');
   const tableWrap = document.getElementById('salesHistoryTableWrap');
   const emptyState = document.getElementById('salesHistoryEmptyState');
@@ -100,9 +113,7 @@ async function renderSalesHistory() {
   const typeFilter = document.getElementById('salesTypeFilter').value;
   const statusFilter = document.getElementById('salesStatusFilter').value;
 
-  let sales = await DB.getSales();
-
-  sales = sales
+  let sales = allSales
     .map(sale => {
       const normalizedSaleType = sale.saleType || (sale.paymentMethod === 'Crédito' ? 'Credito' : 'Contado');
       const pendingBalance = Number(sale.pendingBalance || 0);
@@ -197,9 +208,8 @@ async function renderSalesHistory() {
 }
 
 /* ============ ABONOS A CRÉDITO ============ */
-async function openCreditPaymentModal(saleId) {
-  const sales = await DB.getSales();
-  const sale = sales.find(item => item.id === saleId);
+function openCreditPaymentModal(saleId) {
+  const sale = allSales.find(item => item.id === saleId);
 
   if (!sale) {
     showToast('No se encontró la venta seleccionada', 'error');
@@ -266,17 +276,23 @@ async function confirmCreditPayment() {
     return;
   }
 
+  // Actualiza la venta en la caché local con el resultado del abono,
+  // sin volver a descargar todo el historial de Firebase.
+  const index = allSales.findIndex(s => s.id === activePaymentSaleId);
+  if (index !== -1) {
+    allSales[index] = result.sale;
+  }
+
   closeCreditPaymentModal();
   showToast('✅ Abono registrado correctamente', 'success');
-  await renderSalesHistory();
-  await renderStats();
+  renderSalesHistory();
+  renderStats();
 }
 
 /* ============ ELIMINAR VENTA ============ */
-async function openDeleteSaleModal(saleId) {
+function openDeleteSaleModal(saleId) {
   deleteSaleId = saleId;
-  const sales = await DB.getSales();
-  const sale = sales.find(s => s.id === saleId);
+  const sale = allSales.find(s => s.id === saleId);
 
   document.getElementById('deleteSaleRef').textContent = sale ? `#${sale.number || '—'}` : 'esta venta';
   openModal('deleteSaleModal');
