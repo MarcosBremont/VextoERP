@@ -1501,7 +1501,14 @@ document.addEventListener('DOMContentLoaded', () => {
 // Registrar el Service Worker (app shell offline / instalable como PWA)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch((e) => {
+    navigator.serviceWorker.register('sw.js').then((registration) => {
+      // Forzar la comprobación de una versión nueva en cada carga, en vez
+      // de esperar a que el navegador la revise por su cuenta (puede tardar
+      // hasta 24h y dejar la app "atascada" con un fix ya publicado). El
+      // Service Worker nuevo toma el control solo, pero el código ya
+      // cargado en la pestaña actual no cambia hasta el próximo refresh.
+      registration.update();
+    }).catch((e) => {
       console.warn('No se pudo registrar el Service Worker:', e.message);
     });
   });

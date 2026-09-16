@@ -5,7 +5,7 @@
    se cachean aquí: siempre van directo a la red.
    ============================================ */
 
-const CACHE_VERSION = 'vextoerp-shell-v2';
+const CACHE_VERSION = 'vextoerp-shell-v3';
 
 const APP_SHELL = [
   './',
@@ -61,10 +61,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Red primero: así siempre se sirve el código más reciente cuando hay
-  // conexión. La caché queda solo como respaldo para cuando no hay red.
+  // Red primero, ignorando la caché HTTP del navegador (no-store): así
+  // siempre se sirve el código más reciente cuando hay conexión, sin que
+  // un Cache-Control del hosting deje "atascada" una versión vieja. La
+  // caché del Service Worker queda solo como respaldo para cuando no hay red.
   event.respondWith(
-    fetch(request)
+    fetch(request, { cache: 'no-store' })
       .then((response) => {
         if (response && response.ok) {
           const clone = response.clone();
