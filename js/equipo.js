@@ -20,7 +20,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderTopbarDate();
   setupMobileMenu();
 
-  document.getElementById('businessCodeInput').value = session.businessId;
+  // Sesiones guardadas antes de que existiera "businessId" no lo tienen:
+  // el código del negocio es entonces el propio id de la cuenta.
+  document.getElementById('businessCodeInput').value = session.businessId || session.id;
 
   await loadTeamData();
 });
@@ -40,7 +42,7 @@ function renderTeamTable() {
   const session = DB.getSession();
 
   tbody.innerHTML = teamMembers.map(member => {
-    const isOwner = member.id === session.businessId;
+    const isOwner = member.id === getCurrentOwnerId();
     const isSelf = member.id === session.id;
 
     return `
