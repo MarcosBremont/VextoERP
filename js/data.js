@@ -1416,7 +1416,11 @@ async function applyVersionBadge() {
 // antes de que existiera este sistema de equipos no pierde acceso a su
 // propia configuración solo por tener guardado el rol "Vendedor".
 function isBusinessOwner(session) {
-  return !!session && session.id === session.businessId;
+  if (!session) return false;
+  // Sesiones guardadas antes de que existiera "businessId" (o cualquier
+  // registro de usuario sin ese campo) no deben quedar bloqueadas: se
+  // tratan como dueñas de sí mismas, igual que su comportamiento previo.
+  return !session.businessId || session.businessId === session.id;
 }
 
 // Oculta del sidebar los apartados exclusivos del dueño del negocio
