@@ -565,6 +565,17 @@ h1, h2, h3, h4 {
   font-weight: 700;
   font-size: 0.85rem;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-preview.round {
+  border-radius: 50%;
 }
 
 .user-details {

@@ -390,6 +390,63 @@ const DB = {
     return { success: true };
   },
 
+  // Actualiza nombre, usuario y foto de la cuenta que inició sesión
+  async updateProfile(userId, profileData) {
+    const name = (profileData.name || '').trim();
+    if (!name) throw new Error('El nombre es obligatorio');
+
+    const username = (profileData.username || '').trim().toLowerCase();
+    if (!username || username.length < 3) throw new Error('El usuario debe tener al menos 3 caracteres');
+
+    const allUsers = await this.getUsers();
+    if (allUsers.some(u => u.id !== userId && u.username.toLowerCase() === username)) {
+      throw new Error('Ese nombre de usuario ya está en uso');
+    }
+
+    const updatedData = { name, username, photo: profileData.photo || null };
+
+    if (isFirebaseAvailable()) {
+      try {
+        await db.collection(COLLECTIONS.USERS).doc(userId).update(updatedData);
+        return { id: userId, ...updatedData };
+      } catch (e) {
+        console.warn('Firebase bloqueado, usando localStorage:', e.message);
+      }
+    }
+
+    const users = readData(STORAGE_KEYS.USERS, []);
+    const index = users.findIndex(u => u.id === userId);
+    if (index === -1) throw new Error('Usuario no encontrado');
+    users[index] = { ...users[index], ...updatedData };
+    saveData(STORAGE_KEYS.USERS, users);
+    return users[index];
+  },
+
+  // Cambia la contraseña, verificando primero la actual
+  async changePassword(userId, currentPassword, newPassword) {
+    const user = await this.getUserById(userId);
+    if (!user) return { success: false, error: 'Usuario no encontrado' };
+    if (user.password !== currentPassword) {
+      return { success: false, error: 'La contraseña actual no es correcta' };
+    }
+
+    if (isFirebaseAvailable()) {
+      try {
+        await db.collection(COLLECTIONS.USERS).doc(userId).update({ password: newPassword });
+        return { success: true };
+      } catch (e) {
+        console.warn('Firebase bloqueado, usando localStorage:', e.message);
+      }
+    }
+
+    const users = readData(STORAGE_KEYS.USERS, []);
+    const index = users.findIndex(u => u.id === userId);
+    if (index === -1) return { success: false, error: 'Usuario no encontrado' };
+    users[index].password = newPassword;
+    saveData(STORAGE_KEYS.USERS, users);
+    return { success: true };
+  },
+
   /* ============ SESIÓN ============ */
   getSession() {
     return readData(STORAGE_KEYS.SESSION, null);
@@ -401,6 +458,7 @@ const DB = {
       name: user.name,
       username: user.username,
       role: user.role,
+      photo: user.photo || null,
       // Cuentas creadas antes de existir "negocios" no tienen businessId
       // guardado: se asume que son dueñas de sí mismas (comportamiento
       // idéntico al que ya tenían).
@@ -1354,7 +1412,9 @@ function renderSidebarUser() {
   document.querySelectorAll('.user-name').forEach(el => el.textContent = session.name);
   document.querySelectorAll('.user-role').forEach(el => el.textContent = session.role);
   document.querySelectorAll('.user-avatar').forEach(el => {
-    el.textContent = session.name.charAt(0).toUpperCase();
+    el.innerHTML = session.photo
+      ? `<img src="${session.photo}" alt="${escapeHtml(session.name)}">`
+      : session.name.charAt(0).toUpperCase();
   });
 }
 

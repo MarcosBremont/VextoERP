@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VextoERP | Mi Perfil</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="theme-color" content="#7263f0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="VextoERP">
+  <link rel="shortcut icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👤</text></svg>">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="logo-badge">
+          <img src="vextologo1.png" alt="VextoERP" id="sidebarLogoImg">
+        </div>
+        <div class="sidebar-brand-text">
+          <span class="brand-name" id="sidebarBrandName">VextoERP</span>
+          <span class="brand-sub">Facturación & Inventario</span>
+        </div>
+      </div>
+      <script>
+        (function () {
+          try {
+            var cached = localStorage.getItem('vexto_company_branding_cache');
+            if (!cached) return;
+            var data = JSON.parse(cached);
+            if (data.businessName) document.getElementById('sidebarBrandName').textContent = data.businessName;
+            if (data.logo) document.getElementById('sidebarLogoImg').src = data.logo;
+          } catch (e) {}
+        })();
+      </script>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section">Principal</div>
+        <a href="facturacion.html" class="nav-item">
+          <span class="nav-icon">🧾</span>
+          <span>Facturación</span>
+        </a>
+        <a href="historial.html" class="nav-item">
+          <span class="nav-icon">📋</span>
+          <span>Historial</span>
+        </a>
+        <a href="clientes.html" class="nav-item">
+          <span class="nav-icon">👥</span>
+          <span>Clientes</span>
+        </a>
+        <a href="inventario.html" class="nav-item">
+          <span class="nav-icon">📦</span>
+          <span>Inventario</span>
+        </a>
+        <a href="perfil.html" class="nav-item active">
+          <span class="nav-icon">👤</span>
+          <span>Mi Perfil</span>
+        </a>
+        <div class="nav-section" id="accountNavSection">Cuenta</div>
+        <a href="configuracion.html" class="nav-item" id="companyNavItem">
+          <span class="nav-icon">🏢</span>
+          <span>Mi Empresa</span>
+        </a>
+        <a href="equipo.html" class="nav-item" id="teamNavItem">
+          <span class="nav-icon">🧑‍🤝‍🧑</span>
+          <span>Mi Equipo</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar">A</div>
+          <div class="user-details">
+            <span class="user-name">—</span>
+            <span class="user-role">—</span>
+          </div>
+        </div>
+        <button class="logout-btn" onclick="logout()">
+          <span>🚪</span>
+          <span>Cerrar Sesión</span>
+        </button>
+        <div class="version-badge" id="versionBadge"></div>
+      </div>
+    </aside>
+
+    <!-- ============ CONTENIDO PRINCIPAL ============ -->
+    <main class="main-content">
+      <header class="topbar">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button class="menu-toggle" aria-label="Abrir menú">☰</button>
+          <h2>👤 Mi Perfil</h2>
+        </div>
+        <div class="topbar-right">
+          <span class="topbar-date" id="todayDate"></span>
+        </div>
+      </header>
+
+      <div class="content-area">
+        <div class="card" style="max-width: 640px;">
+          <div class="card-header">
+            <h3>👤 Mis Datos</h3>
+          </div>
+
+          <form id="profileForm" novalidate>
+            <div class="modal-body" style="padding: 24px;">
+              <div class="form-group">
+                <label>Foto de perfil</label>
+                <div class="photo-upload">
+                  <div class="photo-preview round" id="profilePhotoPreview">
+                    <span id="profilePhotoPlaceholder">👤</span>
+                    <img id="profilePhotoImg" class="hidden" alt="Foto de perfil">
+                  </div>
+                  <div class="photo-upload-actions">
+                    <input type="file" id="profilePhotoInput" accept="image/*" class="hidden">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('profilePhotoInput').click()">📷 Elegir foto</button>
+                    <button type="button" class="btn btn-secondary btn-sm hidden" id="removeProfilePhotoBtn" onclick="removeProfilePhoto()">✕ Quitar</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="profileName">Nombre completo *</label>
+                <input type="text" id="profileName" placeholder="Ej: Juan Pérez" required>
+              </div>
+
+              <div class="form-group">
+                <label for="profileUsername">Usuario *</label>
+                <input type="text" id="profileUsername" placeholder="Nombre de usuario" required>
+                <div class="hint">Es lo que usas para iniciar sesión.</div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-primary" id="saveProfileBtn">💾 Guardar Cambios</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card" style="max-width: 640px; margin-top:20px;">
+          <div class="card-header">
+            <h3>🔒 Cambiar Contraseña</h3>
+          </div>
+
+          <form id="passwordForm" novalidate>
+            <div class="modal-body" style="padding: 24px;">
+              <div class="form-group">
+                <label for="currentPassword">Contraseña actual *</label>
+                <input type="password" id="currentPassword" placeholder="Tu contraseña actual" autocomplete="current-password" required>
+              </div>
+
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="newPassword">Nueva contraseña *</label>
+                  <input type="password" id="newPassword" placeholder="Mínimo 6 caracteres" autocomplete="new-password" required>
+                </div>
+                <div class="form-group">
+                  <label for="confirmNewPassword">Confirmar nueva contraseña *</label>
+                  <input type="password" id="confirmNewPassword" placeholder="Repite la contraseña" autocomplete="new-password" required>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-primary" id="changePasswordBtn">🔒 Cambiar Contraseña</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/perfil.js"></script>
+</body>
+</html>
