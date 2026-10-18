@@ -1318,6 +1318,116 @@ const DB = {
   }
 };
 
+/* ---------- FACTURA IMPRIMIBLE / DESCARGABLE ---------- */
+
+// Arma el HTML de una factura/comprobante lista para imprimir o
+// guardar como PDF desde el diálogo de impresión del navegador.
+function buildInvoiceHtml(sale, companySettings) {
+  const itemsRows = (sale.items || []).map(item => `
+    <tr>
+      <td>${escapeHtml(item.name)}</td>
+      <td class="num">${item.quantity}</td>
+      <td class="num">${formatCurrency(item.price)}</td>
+      <td class="num">${formatCurrency(item.subtotal)}</td>
+    </tr>
+  `).join('');
+
+  const header = companySettings && (companySettings.businessName || companySettings.logo) ? `
+    ${companySettings.logo ? `<img src="${companySettings.logo}" alt="">` : ''}
+    ${companySettings.businessName ? `<h1>${escapeHtml(companySettings.businessName)}</h1>` : ''}
+    ${companySettings.taxId ? `<p>RNC/Céd: ${escapeHtml(companySettings.taxId)}</p>` : ''}
+    ${companySettings.address ? `<p>${escapeHtml(companySettings.address)}</p>` : ''}
+    ${companySettings.phone ? `<p>Tel: ${escapeHtml(companySettings.phone)}</p>` : ''}
+    ${companySettings.email ? `<p>${escapeHtml(companySettings.email)}</p>` : ''}
+  ` : `<h1>Comprobante de Venta</h1>`;
+
+  const footer = companySettings && companySettings.receiptFooter
+    ? `<div class="inv-footer">${escapeHtml(companySettings.receiptFooter)}</div>`
+    : '';
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Factura ${escapeHtml(sale.number || '')}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; padding: 32px; color:#111827; max-width:720px; margin:0 auto; }
+  .inv-header { text-align:center; margin-bottom:24px; padding-bottom:16px; border-bottom:2px solid #111827; }
+  .inv-header img { max-width:140px; max-height:70px; object-fit:contain; margin-bottom:8px; }
+  .inv-header h1 { margin:4px 0; font-size:1.3rem; }
+  .inv-header p { margin:2px 0; font-size:0.82rem; color:#555; }
+  .inv-title { text-align:center; font-size:1.1rem; font-weight:bold; margin: 20px 0 16px; text-transform:uppercase; letter-spacing:0.05em; }
+  .inv-meta { display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:20px; font-size:0.88rem; }
+  .inv-meta .label { color:#6b7280; font-size:0.72rem; text-transform:uppercase; display:block; }
+  table { width:100%; border-collapse:collapse; margin-bottom:20px; }
+  th, td { padding:8px 10px; text-align:left; border-bottom:1px solid #e5e7eb; font-size:0.88rem; }
+  th { background:#f3f4f6; font-size:0.72rem; text-transform:uppercase; color:#6b7280; }
+  .num { text-align:right; }
+  .inv-totals { margin-left:auto; width:280px; }
+  .inv-totals div { display:flex; justify-content:space-between; padding:4px 0; font-size:0.9rem; }
+  .inv-totals .total { font-weight:bold; font-size:1.15rem; border-top:2px solid #111827; padding-top:8px; margin-top:4px; }
+  .inv-footer { margin-top:32px; text-align:center; font-size:0.85rem; color:#6b7280; padding-top:16px; border-top:1px dashed #d1d5db; }
+  @media print { body { padding:0; } }
+</style>
+</head>
+<body>
+  <div class="inv-header">${header}</div>
+  <div class="inv-title">Comprobante de Venta ${escapeHtml(sale.number || '')}</div>
+  <div class="inv-meta">
+    <div><span class="label">Fecha</span><span>${formatDateTime(sale.date)}</span></div>
+    <div><span class="label">Cliente</span><span>${escapeHtml(sale.customerName || 'Cliente general')}</span></div>
+    <div><span class="label">Atendido por</span><span>${escapeHtml(sale.sellerName || '—')}</span></div>
+    <div><span class="label">Método de pago</span><span>${escapeHtml(sale.paymentMethod || '—')}</span></div>
+    ${sale.orderReference ? `<div><span class="label">Referencia</span><span>${escapeHtml(sale.orderReference)}</span></div>` : ''}
+  </div>
+  <table>
+    <thead>
+      <tr><th>Producto</th><th class="num">Cant.</th><th class="num">Precio</th><th class="num">Subtotal</th></tr>
+    </thead>
+    <tbody>${itemsRows}</tbody>
+  </table>
+  <div class="inv-totals">
+    <div><span>Subtotal productos:</span><span>${formatCurrency(sale.subtotal || 0)}</span></div>
+    ${sale.discountAmount > 0 ? `<div><span>Descuento (${sale.discountPercent || 0}%):</span><span>-${formatCurrency(sale.discountAmount)}</span></div>` : ''}
+    ${sale.deliveryEnabled && sale.deliveryCost > 0 ? `<div><span>Delivery${sale.deliveryDestination ? ' (' + escapeHtml(sale.deliveryDestination) + ')' : ''}:</span><span>+${formatCurrency(sale.deliveryCost)}</span></div>` : ''}
+    <div class="total"><span>TOTAL:</span><span>${formatCurrency(sale.total || 0)}</span></div>
+    ${sale.saleType === 'Credito' ? `
+      <div><span>Abonado:</span><span>${formatCurrency(sale.paidAmount || 0)}</span></div>
+      <div><span>Saldo pendiente:</span><span>${formatCurrency(sale.pendingBalance || 0)}</span></div>
+    ` : ''}
+    ${sale.amountTendered ? `
+      <div><span>Paga con:</span><span>${formatCurrency(sale.amountTendered)}</span></div>
+      <div><span>Cambio:</span><span>${formatCurrency(sale.changeDue || 0)}</span></div>
+    ` : ''}
+  </div>
+  ${sale.notes ? `<p style="font-size:0.85rem; color:#555;"><strong>Notas:</strong> ${escapeHtml(sale.notes)}</p>` : ''}
+  ${footer}
+</body>
+</html>`;
+}
+
+// Abre la factura en una pestaña nueva y lanza el diálogo de impresión
+// del navegador (desde ahí se puede "Guardar como PDF" o imprimir en papel).
+function printInvoice(sale, companySettings) {
+  if (!sale) {
+    showToast('No hay datos de la venta para generar la factura', 'error');
+    return;
+  }
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    showToast('El navegador bloqueó la ventana. Habilita las ventanas emergentes para descargar la factura.', 'warning');
+    return;
+  }
+
+  printWindow.document.open();
+  printWindow.document.write(buildInvoiceHtml(sale, companySettings));
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.onload = () => printWindow.print();
+}
+
 /* ---------- UTILIDADES UI ---------- */
 
 // Sistema de notificaciones (toast)

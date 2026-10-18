@@ -9,6 +9,8 @@ let allProducts = [];
 let allCategories = [];
 let allCustomers = [];
 let activeCategoryFilter = '';
+let lastCompletedSale = null;
+let lastCompanySettings = null;
 
 // Escapa un texto para insertarlo de forma segura dentro de comillas simples de un atributo onclick
 function escapeJsString(str) {
@@ -572,6 +574,8 @@ async function confirmSale() {
 
   // Encabezado y pie del comprobante con los datos de "Mi Empresa" (si están configurados)
   const companySettings = await DB.getCompanySettings().catch(() => null);
+  lastCompletedSale = sale;
+  lastCompanySettings = companySettings;
   const receiptHeader = companySettings && (companySettings.businessName || companySettings.logo) ? `
     <div style="text-align:center; padding-bottom:14px; margin-bottom:10px; border-bottom:1px dashed var(--gray-300);">
       ${companySettings.logo ? `<img src="${companySettings.logo}" alt="${escapeHtml(companySettings.businessName || '')}" style="max-width:120px; max-height:60px; object-fit:contain; margin-bottom:8px;">` : ''}
@@ -693,6 +697,10 @@ async function confirmSale() {
 
 function closeSaleSuccess() {
   closeModal('successModal');
+}
+
+function downloadCurrentInvoice() {
+  printInvoice(lastCompletedSale, lastCompanySettings);
 }
 
 // Ocultar las sugerencias de cliente al hacer clic fuera de los campos relacionados

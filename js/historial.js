@@ -5,6 +5,7 @@
 
 let allProducts = [];
 let allSales = [];
+let companySettings = null;
 let activePaymentSaleId = null;
 let deleteSaleId = null;
 
@@ -39,6 +40,7 @@ async function loadHistoryData() {
   try {
     allProducts = await DB.getProducts();
     allSales = await DB.getSales();
+    companySettings = await DB.getCompanySettings().catch(() => null);
     renderStats();
     renderSalesHistory();
   } catch (e) {
@@ -199,12 +201,22 @@ function renderSalesHistory() {
             ${hasPendingCredit
               ? `<button class="btn btn-outline btn-sm sales-action-btn" onclick="openCreditPaymentModal('${sale.id}')">💵 Abonar</button>`
               : ''}
+            <button class="btn-icon edit-btn" onclick="printSaleInvoice('${sale.id}')" title="Descargar / imprimir factura">📄</button>
             <button class="btn-icon delete-btn" onclick="openDeleteSaleModal('${sale.id}')" title="Eliminar venta">🗑️</button>
           </div>
         </td>
       </tr>
     `;
   }).join('');
+}
+
+function printSaleInvoice(saleId) {
+  const sale = allSales.find(s => s.id === saleId);
+  if (!sale) {
+    showToast('No se encontró la venta seleccionada', 'error');
+    return;
+  }
+  printInvoice(sale, companySettings);
 }
 
 /* ============ ABONOS A CRÉDITO ============ */
